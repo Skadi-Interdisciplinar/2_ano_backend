@@ -9,6 +9,7 @@
 - [ ] Feature
 - [ ] Correção de bug
 - [ ] Refatoração de código
+- [ ] Atualização de dependências / Atualização de operação
 - [ ] Documentação
 - [ ] Outro
 
