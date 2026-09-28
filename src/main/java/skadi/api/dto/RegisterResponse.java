@@ -8,6 +8,7 @@ public record RegisterResponse(
         String username,
         String email,
         NivelAcesso nivelAcesso,
-        Integer codCD
+        Integer codCD,
+        Integer codGestor
 ) {
 }

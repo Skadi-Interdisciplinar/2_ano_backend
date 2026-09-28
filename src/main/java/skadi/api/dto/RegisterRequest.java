@@ -9,6 +9,7 @@ public record RegisterRequest(
         String email,
         String senha,
         NivelAcesso nivelAcesso,
-        Integer codCD
+        Integer codCD,
+        Integer codGestor
 ) {
 }

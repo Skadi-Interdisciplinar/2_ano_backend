@@ -13,7 +13,7 @@ class UserMapperTest {
     @Test
     void fromDTO_copiesRegistrationFields() {
         RegisterRequest request = new RegisterRequest(
-                "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.GESTOR, 7
+                "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.GESTOR, 7, 2
         );
 
         User user = UserMapper.fromDTO(request);
@@ -26,5 +26,18 @@ class UserMapperTest {
         assertEquals("senha", user.getSenha());
         assertEquals(NivelAcesso.GESTOR, user.getNivelAcesso());
         assertEquals(7, user.getCodCD());
+        assertEquals(2, user.getCodGestor());
+    }
+
+    @Test
+    void toDTO_copiesUserFieldsIncludingCodGestor() {
+        User user = new User(3L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.OPERADOR, 7, 2);
+
+        var dto = UserMapper.toDTO(user);
+
+        assertEquals(3L, dto.id());
+        assertEquals("enzo", dto.username());
+        assertEquals(7, dto.codCD());
+        assertEquals(2, dto.codGestor());
     }
 }

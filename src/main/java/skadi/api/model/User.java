@@ -48,7 +48,15 @@ public class User implements UserDetails {
     @Column(name = "cod_cd")
     private Integer codCD;
 
-    public User(String nome, String username, String cpf, String email, String senha, NivelAcesso nivelAcesso, Integer codCD) {
+    // @ManyToOne(fetch = FetchType.LAZY)
+    // @JoinColumn(name = "id")
+    // TODO: adicionar gestor
+    @Column(name = "cod_gestor")
+    private Integer codGestor;
+
+
+
+    public User(String nome, String username, String cpf, String email, String senha, NivelAcesso nivelAcesso, Integer codCD, Integer codGestor) {
         this.nome = nome;
         this.username = username;
         this.cpf = cpf;
@@ -56,6 +64,7 @@ public class User implements UserDetails {
         this.senha = senha;
         this.nivelAcesso = nivelAcesso;
         this.codCD = codCD;
+        this.codGestor = codGestor;
     }
 
     @Override

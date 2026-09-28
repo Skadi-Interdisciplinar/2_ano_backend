@@ -86,7 +86,7 @@ class JWTConfigurationFilterTest {
 
     @Test
     void validBearer_setsSecurityContext() throws Exception {
-        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, 1);
+        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, 1, null);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer jwt-valido");
         MockHttpServletResponse response = new MockHttpServletResponse();

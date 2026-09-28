@@ -20,7 +20,6 @@ import skadi.api.config.TokenProvider;
 import skadi.api.dto.ErrorResponse;
 import skadi.api.dto.LoginRequest;
 import skadi.api.dto.RegisterRequest;
-import skadi.api.dto.RegisterResponse;
 import skadi.api.dto.TokenResponse;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.exceptions.UserAlreadyExistsException;
@@ -28,6 +27,7 @@ import skadi.api.model.User;
 import skadi.api.repository.UserRepository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -64,28 +64,26 @@ class UserServiceTest {
     @Test
     void register_savesUserWhenUsernameIsAvailable() {
         RegisterRequest request = new RegisterRequest(
-                "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.OPERADOR, 1
+                "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, 1, null
         );
-        User salvo = new User(10L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.OPERADOR, 1);
+        User salvo = new User(10L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, 1, null);
         when(repository.existsByUsername("enzo")).thenReturn(false);
         when(passwordEncoder.encode("senha")).thenReturn("$2a$10$hashed");
         when(repository.save(any(User.class))).thenReturn(salvo);
 
-        RegisterResponse response = userService.register(request);
-
-        assertEquals(10L, response.id());
-        assertEquals("enzo", response.username());
-        assertEquals(NivelAcesso.OPERADOR, response.nivelAcesso());
+        userService.register(request);
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(repository).save(captor.capture());
+        assertEquals("enzo", captor.getValue().getUsername());
+        assertEquals(NivelAcesso.ADMIN, captor.getValue().getNivelAcesso());
         assertEquals("$2a$10$hashed", captor.getValue().getSenha());
     }
 
     @Test
     void register_throwsWhenCreatingSuperAdmin() {
         RegisterRequest request = new RegisterRequest(
-                "Root", "root", "12345678901", "root@email.com", "senha", NivelAcesso.SUPER_ADMIN, 1
+                "Root", "root", "12345678901", "root@email.com", "senha", NivelAcesso.SUPER_ADMIN, 1, null
         );
 
         AccessDeniedException erro = assertThrows(
@@ -96,13 +94,13 @@ class UserServiceTest {
 
         assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
         assertEquals(403, response.getBody().statusCode());
-        assertEquals("ADMIN não pode cadastrar SUPER_ADMIN", response.getBody().message());
+        assertEquals("SUPER_ADMIN cadastra apenas ADMIN", response.getBody().message());
     }
 
     @Test
     void register_throwsWhenUsernameAlreadyExists() {
         RegisterRequest request = new RegisterRequest(
-                "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.OPERADOR, 1
+                "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, 1, null
         );
         when(repository.existsByUsername("enzo")).thenReturn(true);
 
@@ -128,6 +126,7 @@ class UserServiceTest {
 
         assertEquals("jwt-gerado", response.token());
         assertEquals(3600L, response.expirationTime());
+        assertNotNull(response.validUntil());
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
     }
 

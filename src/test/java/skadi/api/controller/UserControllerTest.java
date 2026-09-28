@@ -12,13 +12,16 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import skadi.api.config.GlobalExceptionHandler;
-import skadi.api.dto.RegisterResponse;
 import skadi.api.dto.TokenResponse;
-import skadi.api.enums.NivelAcesso;
 import skadi.api.exceptions.UserAlreadyExistsException;
 import skadi.api.service.UserService;
 
+import java.sql.Timestamp;
+import java.time.Instant;
+
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -30,7 +33,7 @@ class UserControllerTest {
     @Mock
     private UserService userService;
 
-    private static final String ADMIN_BEARER = "Bearer eyJhbGciOiJIUzI1NiJ9.admin-token";
+    private static final String SUPER_ADMIN_BEARER = "Bearer eyJhbGciOiJIUzI1NiJ9.admin-token";
 
     private MockMvc mockMvc;
 
@@ -44,12 +47,10 @@ class UserControllerTest {
 
     @Test
     void register_returns201() throws Exception {
-        when(userService.register(any())).thenReturn(
-                new RegisterResponse(1L, "Enzo", "enzo", "enzo@email.com", NivelAcesso.OPERADOR, 1)
-        );
+        doNothing().when(userService).register(any());
 
         mockMvc.perform(post("/register")
-                        .header(HttpHeaders.AUTHORIZATION, ADMIN_BEARER)
+                        .header(HttpHeaders.AUTHORIZATION, SUPER_ADMIN_BEARER)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -58,17 +59,18 @@ class UserControllerTest {
                                   "cpf": "12345678901",
                                   "email": "enzo@email.com",
                                   "senha": "senha",
-                                  "nivelAcesso": "OPERADOR",
-                                  "codCD": 1
+                                  "nivelAcesso": "ADMIN",
+                                  "codCD": 1,
+                                  "codGestor": null
                                 }
                                 """))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.username").value("enzo"));
+                .andExpect(status().isCreated());
     }
 
     @Test
     void login_returns200WithToken() throws Exception {
-        when(userService.login(any())).thenReturn(new TokenResponse("jwt-gerado", 3600L));
+        Timestamp validUntil = Timestamp.from(Instant.parse("2026-01-01T00:00:00Z"));
+        when(userService.login(any())).thenReturn(new TokenResponse("jwt-gerado", 1800L, validUntil));
 
         mockMvc.perform(post("/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -77,15 +79,16 @@ class UserControllerTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("jwt-gerado"))
-                .andExpect(jsonPath("$.expirationTime").value(3600));
+                .andExpect(jsonPath("$.expirationTime").value(1800))
+                .andExpect(jsonPath("$.validUntil").value("2026-01-01T00:00:00.000Z"));
     }
 
     @Test
     void register_returns409WhenUsernameExists() throws Exception {
-        when(userService.register(any())).thenThrow(new UserAlreadyExistsException());
+        doThrow(new UserAlreadyExistsException()).when(userService).register(any());
 
         mockMvc.perform(post("/register")
-                        .header(HttpHeaders.AUTHORIZATION, ADMIN_BEARER)
+                        .header(HttpHeaders.AUTHORIZATION, SUPER_ADMIN_BEARER)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -94,8 +97,9 @@ class UserControllerTest {
                                   "cpf": "12345678901",
                                   "email": "enzo@email.com",
                                   "senha": "senha",
-                                  "nivelAcesso": "OPERADOR",
-                                  "codCD": 1
+                                  "nivelAcesso": "ADMIN",
+                                  "codCD": 1,
+                                  "codGestor": null
                                 }
                                 """))
                 .andExpect(status().isConflict())
@@ -105,11 +109,11 @@ class UserControllerTest {
 
     @Test
     void register_returns403WhenCreatingSuperAdmin() throws Exception {
-        when(userService.register(any()))
-                .thenThrow(new AccessDeniedException("ADMIN não pode cadastrar SUPER_ADMIN"));
+        doThrow(new AccessDeniedException("SUPER_ADMIN cadastra apenas ADMIN"))
+                .when(userService).register(any());
 
         mockMvc.perform(post("/register")
-                        .header(HttpHeaders.AUTHORIZATION, ADMIN_BEARER)
+                        .header(HttpHeaders.AUTHORIZATION, SUPER_ADMIN_BEARER)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -119,12 +123,13 @@ class UserControllerTest {
                                   "email": "root@email.com",
                                   "senha": "senha",
                                   "nivelAcesso": "SUPER_ADMIN",
-                                  "codCD": 1
+                                  "codCD": 1,
+                                  "codGestor": null
                                 }
                                 """))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.statusCode").value(403))
-                .andExpect(jsonPath("$.message").value("ADMIN não pode cadastrar SUPER_ADMIN"));
+                .andExpect(jsonPath("$.message").value("SUPER_ADMIN cadastra apenas ADMIN"));
     }
 
     @Test

@@ -21,6 +21,10 @@ import skadi.api.mapper.UserMapper;
 import skadi.api.model.User;
 import skadi.api.repository.UserRepository;
 
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.ZoneOffset;
+
 @Service
 @RequiredArgsConstructor
 public class UserService {
@@ -37,9 +41,9 @@ public class UserService {
 
 
 
-    public RegisterResponse register(RegisterRequest request){
-        if (request.nivelAcesso() == NivelAcesso.SUPER_ADMIN) {
-            throw new AccessDeniedException("ADMIN não pode cadastrar SUPER_ADMIN");
+    public void register(RegisterRequest request){
+        if (request.nivelAcesso() != NivelAcesso.ADMIN) {
+            throw new AccessDeniedException("SUPER_ADMIN cadastra apenas ADMIN");
         }
 
         if(repository.existsByUsername(request.username())){
@@ -51,14 +55,8 @@ public class UserService {
 
         User saved = repository.save(user);
 
-        return new RegisterResponse(
-                saved.getId(),
-                saved.getNome(),
-                saved.getUsername(),
-                saved.getEmail(),
-                saved.getNivelAcesso(),
-                saved.getCodCD()
-        );
+        return;
+
 
     }
 
@@ -71,7 +69,7 @@ public class UserService {
 
             String token = tokenProvider.generateToken(authentication);
 
-            return new TokenResponse(token, expirationTime);
+            return new TokenResponse(token, expirationTime, Timestamp.from(Instant.now().plusSeconds(expirationTime)));
     }catch (BadCredentialsException bad){
             throw new BadCredentialsException("Credenciais inválidas");
         }

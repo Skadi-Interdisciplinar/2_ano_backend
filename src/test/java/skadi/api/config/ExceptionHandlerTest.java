@@ -1,5 +1,7 @@
 package skadi.api.config;
 
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.Jwts;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -68,5 +70,20 @@ class ExceptionHandlerTest {
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertEquals(500, response.getBody().statusCode());
         assertEquals("Erro inesperado: java.lang.IllegalStateException: falha", response.getBody().message());
+    }
+
+    @Test
+    void handleExpiredToken_returns401() {
+        ExpiredJwtException expired = new ExpiredJwtException(
+                Jwts.header().add("alg", "HS256").build(),
+                Jwts.claims().subject("enzo").build(),
+                "Token inválido"
+        );
+
+        ResponseEntity<ErrorResponse> response = exceptionHandler.handleExpiredToken(expired);
+
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertEquals(500, response.getBody().statusCode());
+        assertEquals("Token inválido", response.getBody().message());
     }
 }

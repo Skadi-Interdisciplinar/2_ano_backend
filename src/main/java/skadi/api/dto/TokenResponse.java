@@ -1,4 +1,6 @@
 package skadi.api.dto;
 
-public record TokenResponse(String token, Long expirationTime) {
+import java.sql.Timestamp;
+
+public record TokenResponse(String token, Long expirationTime, Timestamp validUntil) {
 }

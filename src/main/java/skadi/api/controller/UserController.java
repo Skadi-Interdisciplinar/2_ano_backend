@@ -3,14 +3,11 @@ package skadi.api.controller;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseBody;
-import org.springframework.web.bind.annotation.RestController;
-import skadi.api.dto.LoginRequest;
-import skadi.api.dto.RegisterRequest;
-import skadi.api.dto.RegisterResponse;
-import skadi.api.dto.TokenResponse;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+
+import org.springframework.web.bind.annotation.*;
+import skadi.api.dto.*;
+import skadi.api.model.User;
 import skadi.api.service.UserService;
 
 @RestController
@@ -22,8 +19,9 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<RegisterResponse> register(@RequestBody RegisterRequest dto){
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.register(dto));
+    public ResponseEntity<Void> register(@RequestBody RegisterRequest dto){
+        service.register(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).build();
 
     }
 
@@ -31,5 +29,11 @@ public class UserController {
     @PostMapping("/login")
     public ResponseEntity<TokenResponse> login (@RequestBody LoginRequest dto){
         return ResponseEntity.ok(service.login(dto));
+    }
+
+
+    @GetMapping("/me")
+    public ResponseEntity<User> me(@AuthenticationPrincipal User user){
+        return ResponseEntity.ok(user);
     }
 }

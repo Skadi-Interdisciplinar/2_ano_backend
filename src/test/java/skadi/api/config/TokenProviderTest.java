@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import io.jsonwebtoken.ExpiredJwtException;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.util.ReflectionTestUtils;
 import skadi.api.enums.NivelAcesso;
@@ -13,6 +14,7 @@ import skadi.api.model.User;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
@@ -44,7 +46,7 @@ class TokenProviderTest {
 
     @Test
     void generateToken_usesPrincipalUsername() {
-        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.OPERADOR, 1);
+        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.OPERADOR, 1, 2);
         when(authentication.getPrincipal()).thenReturn(user);
 
         String token = tokenProvider.generateToken(authentication);
@@ -76,10 +78,26 @@ class TokenProviderTest {
     }
 
     @Test
-    void isTokenValid_returnsFalseForExpiredToken() {
+    void generateToken_usesAuthenticationNameWhenPrincipalIsNotUserDetails() {
+        when(authentication.getPrincipal()).thenReturn("enzo");
+        when(authentication.getName()).thenReturn("enzo");
+
+        String token = tokenProvider.generateToken(authentication);
+
+        assertEquals("enzo", tokenProvider.getUsername(token));
+        assertTrue(tokenProvider.isTokenValid(token));
+    }
+
+    @Test
+    void isTokenValid_throwsExpiredJwtExceptionWhenTokenIsExpired() {
         ReflectionTestUtils.setField(tokenProvider, "expirationTime", -10L);
         String token = tokenProvider.buildToken("enzo");
 
-        assertFalse(tokenProvider.isTokenValid(token));
+        ExpiredJwtException erro = assertThrows(
+                ExpiredJwtException.class,
+                () -> tokenProvider.isTokenValid(token)
+        );
+
+        assertEquals("Token inválido", erro.getMessage());
     }
 }

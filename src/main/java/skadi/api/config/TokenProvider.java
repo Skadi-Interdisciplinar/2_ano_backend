@@ -1,6 +1,7 @@
 package skadi.api.config;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
@@ -51,11 +52,15 @@ public class TokenProvider {
         return Keys.hmacShaKeyFor(key.getBytes(StandardCharsets.UTF_8));
     }
 
-    public boolean isTokenValid(String token){
+    public boolean isTokenValid(String token) throws ExpiredJwtException {
         try{
             getClaims(token);
             return true;
         }
+        catch(ExpiredJwtException e){
+            throw new ExpiredJwtException(null,null,"Token inválido");
+        }
+
         catch(Exception e){
             return false;
 
