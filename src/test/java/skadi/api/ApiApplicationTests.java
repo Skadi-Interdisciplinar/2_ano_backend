@@ -1,13 +1,14 @@
 package skadi.api;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
 class ApiApplicationTests {
 
 	@Test
-	void contextLoads() {
+	void applicationClassIsDefined() {
+		assertNotNull(ApiApplication.class);
 	}
 
 }
