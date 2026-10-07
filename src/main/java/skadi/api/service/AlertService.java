@@ -67,9 +67,7 @@ public class AlertService {
                 .orElseThrow(() -> new IllegalArgumentException("Alert not found: " + id));
         alert.setColdRoomId(request.coldRoomId());
         alert.setReferenceShelfLifeHours(request.referenceShelfLifeHours());
-        alert.setCurrentLevel(request.currentLevel());
         alert.setType(request.type());
-        alert.setSeverityLevel(request.severityLevel());
         return toResponse(repository.save(alert));
     }
 

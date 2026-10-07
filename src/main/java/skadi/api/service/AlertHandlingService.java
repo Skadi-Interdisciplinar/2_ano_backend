@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import skadi.api.dto.AlertHandlingResponse;
 import skadi.api.dto.AlertHandlingUpdateRequest;
+import skadi.api.enums.AlertHandlingStatus;
 import skadi.api.model.AlertHandling;
 import skadi.api.repository.AlertHandlingRepository;
 
@@ -34,6 +35,10 @@ public class AlertHandlingService {
             Integer id,
             AlertHandlingUpdateRequest request
     ) {
+        if (request.status() == AlertHandlingStatus.RESOLVIDO) {
+            throw new IllegalArgumentException("Resolve an alert handling by creating a justification");
+        }
+
         AlertHandling handling = repository.findByIdAndAlertId(id, alertId)
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Alert handling not found for alert: " + alertId));

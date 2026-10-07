@@ -93,19 +93,20 @@ class AlertServiceTest {
     }
 
     @Test
-    void update_keepsStatusControlledByDatabase() {
+    void update_keepsLevelSeverityAndStatusControlledByDatabase() {
         Alert current = alert(AlertStatus.ATIVO);
         when(repository.findById(1)).thenReturn(Optional.of(current));
         when(repository.save(current)).thenReturn(current);
 
         AlertUpdateRequest request = new AlertUpdateRequest(
-                4, new BigDecimal("24.00"), CurrentLevel.GESTOR,
-                "temperatura_fora_padrao", SeverityLevel.URGENTE);
+                4, new BigDecimal("24.00"), "temperatura_fora_padrao");
 
         AlertResponse result = service.update(1, request);
 
         assertEquals(AlertStatus.ATIVO, result.status());
         assertEquals(4, current.getColdRoomId());
+        assertEquals(CurrentLevel.OPERADOR, result.currentLevel());
+        assertEquals(SeverityLevel.BAIXA, result.severityLevel());
         verify(repository).save(current);
     }
 
@@ -120,8 +121,7 @@ class AlertServiceTest {
     void update_throwsWhenAlertDoesNotExist() {
         when(repository.findById(99)).thenReturn(Optional.empty());
         AlertUpdateRequest request = new AlertUpdateRequest(
-                3, new BigDecimal("24.00"), CurrentLevel.OPERADOR,
-                "temperatura_fora_padrao", SeverityLevel.BAIXA);
+                3, new BigDecimal("24.00"), "temperatura_fora_padrao");
 
         assertThrows(IllegalArgumentException.class, () -> service.update(99, request));
     }

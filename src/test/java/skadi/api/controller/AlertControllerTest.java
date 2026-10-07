@@ -123,7 +123,7 @@ class AlertControllerTest {
     }
 
     @Test
-    void update_doesNotReceiveStatusInRequest() throws Exception {
+    void update_doesNotReceiveLevelOrSeverityInRequest() throws Exception {
         when(service.update(eq(1), any())).thenReturn(alert(AlertStatus.ATIVO));
 
         mockMvc.perform(put("/alerts/1")
@@ -132,9 +132,7 @@ class AlertControllerTest {
                                 {
                                   "coldRoomId": 3,
                                   "referenceShelfLifeHours": 24.00,
-                                  "currentLevel": "OPERADOR",
-                                  "type": "temperatura_fora_padrao",
-                                  "severityLevel": "BAIXA"
+                                  "type": "temperatura_fora_padrao"
                                 }
                                 """))
                 .andExpect(status().isOk())
@@ -168,9 +166,7 @@ class AlertControllerTest {
                         .content("""
                                 {
                                   "referenceShelfLifeHours": 24.00,
-                                  "currentLevel": "OPERADOR",
-                                  "type": "temperatura_fora_padrao",
-                                  "severityLevel": "BAIXA"
+                                  "type": "temperatura_fora_padrao"
                                 }
                                 """))
                 .andExpect(status().isBadRequest());
