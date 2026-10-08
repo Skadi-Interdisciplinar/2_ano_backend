@@ -7,11 +7,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class SecurityCongifurationTest {
+class SecurityConfigurationTest {
 
     @Test
     void encoder_returnsBCryptPasswordEncoder() {
-        PasswordEncoder encoder = new SecurityCongifuration().encoder();
+        PasswordEncoder encoder = new SecurityConfiguration().encoder();
 
         assertInstanceOf(BCryptPasswordEncoder.class, encoder);
         assertTrue(encoder.matches("senha", encoder.encode("senha")));
