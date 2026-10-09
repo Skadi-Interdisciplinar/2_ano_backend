@@ -21,7 +21,7 @@ import skadi.api.service.UserDetailsServiceImpl;
 
 @Configuration
 @EnableWebSecurity
-public class SecurityCongifuration {
+public class SecurityConfiguration {
 
     @Bean
     public PasswordEncoder encoder() {
