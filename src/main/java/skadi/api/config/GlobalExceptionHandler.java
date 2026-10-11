@@ -11,6 +11,10 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.dao.DataIntegrityViolationException;
 import skadi.api.dto.ErrorResponse;
+import skadi.api.exceptions.ReportNotFoundException;
+import skadi.api.exceptions.ReportRuleViolationException;
+import skadi.api.exceptions.SignatureAlreadyExistsException;
+import skadi.api.exceptions.SignatureNotFoundException;
 import skadi.api.exceptions.CategoryAlreadyExistsException;
 import skadi.api.exceptions.CategoryNotFoundException;
 import skadi.api.exceptions.UserAlreadyExistsException;
@@ -20,14 +24,14 @@ import java.time.Instant;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler(CategoryNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleCategoryNotFound(CategoryNotFoundException ex) {
+    @ExceptionHandler({ReportNotFoundException.class, SignatureNotFoundException.class, CategoryNotFoundException.class})
+    public ResponseEntity<ErrorResponse> handleResourcesNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage(), Timestamp.from(Instant.now())));
     }
 
-    @ExceptionHandler(CategoryAlreadyExistsException.class)
-    public ResponseEntity<ErrorResponse> handleCategoryAlreadyExists(CategoryAlreadyExistsException ex) {
+    @ExceptionHandler(ReportRuleViolationException.class)
+    public ResponseEntity<ErrorResponse> handleReportRuleViolation(ReportRuleViolationException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ex.getMessage(), Timestamp.from(Instant.now())));
     }
@@ -42,10 +46,14 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    @ExceptionHandler
-    public ResponseEntity<ErrorResponse> handleUserAlreadyExists(UserAlreadyExistsException ex) {
+    @ExceptionHandler({
+            CategoryAlreadyExistsException.class,
+            SignatureAlreadyExistsException.class,
+            UserAlreadyExistsException.class
+    })
+    public ResponseEntity<ErrorResponse> handleAlreadyExists(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ex.getMessage(),Timestamp.from(Instant.now())));
+                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ex.getMessage(), Timestamp.from(Instant.now())));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
