@@ -12,24 +12,24 @@ public final class CategoryMapper {
     public static Category fromRequest(CategoryRequest request) {
         return new Category(
                 null,
-                request.nome().trim(),
-                request.temperaturaIdeal(),
-                request.vidaUtilHoras()
+                request.name().trim(),
+                request.idealTemperature(),
+                request.shelfLifeHours()
         );
     }
 
     public static void update(Category category, CategoryRequest request) {
-        category.setNome(request.nome().trim());
-        category.setTemperaturaIdeal(request.temperaturaIdeal());
-        category.setVidaUtilHoras(request.vidaUtilHoras());
+        category.setName(request.name().trim());
+        category.setIdealTemperature(request.idealTemperature());
+        category.setShelfLifeHours(request.shelfLifeHours());
     }
 
     public static CategoryResponse toResponse(Category category) {
         return new CategoryResponse(
                 category.getId(),
-                category.getNome(),
-                category.getTemperaturaIdeal(),
-                category.getVidaUtilHoras()
+                category.getName(),
+                category.getIdealTemperature(),
+                category.getShelfLifeHours()
         );
     }
 }

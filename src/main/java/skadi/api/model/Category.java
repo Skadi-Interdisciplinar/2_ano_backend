@@ -23,12 +23,12 @@ public class Category {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 150)
-    private String nome;
+    @Column(name = "nome", nullable = false, unique = true, length = 150)
+    private String name;
 
     @Column(name = "temperatura_ideal", nullable = false, precision = 5, scale = 2)
-    private BigDecimal temperaturaIdeal;
+    private BigDecimal idealTemperature;
 
     @Column(name = "vida_util_horas", nullable = false, precision = 7, scale = 2)
-    private BigDecimal vidaUtilHoras;
+    private BigDecimal shelfLifeHours;
 }

@@ -7,7 +7,7 @@ import skadi.api.model.Category;
 @Repository
 public interface CategoryRepository extends JpaRepository<Category, Long> {
 
-    boolean existsByNomeIgnoreCase(String nome);
+    boolean existsByNameIgnoreCase(String name);
 
-    boolean existsByNomeIgnoreCaseAndIdNot(String nome, Long id);
+    boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
 }
