@@ -8,6 +8,7 @@ import skadi.api.dto.ReportResponse;
 import skadi.api.exceptions.ReportNotFoundException;
 import skadi.api.exceptions.ReportRuleViolationException;
 import skadi.api.enums.ReportStatus;
+import skadi.api.mapper.ReportMapper;
 import skadi.api.model.Report;
 import skadi.api.repository.ReportRepository;
 import skadi.api.repository.SignatureRepository;
@@ -34,37 +35,32 @@ public class ReportService {
     public ReportResponse create(ReportRequest request, Integer userId) {
         validatePeriod(request.periodStart(), request.periodEnd());
 
-        Report report = new Report();
+        Report report = ReportMapper.fromDTO(request);
         report.setGeneratedByUserId(userId);
         report.setGeneratedAt(LocalDateTime.now());
-        report.setContent(request.content());
         report.setContentHash(calculateHash(request.content()));
-        report.setPeriodStart(request.periodStart());
-        report.setPeriodEnd(request.periodEnd());
         report.setStatus(GENERATED);
 
-        return toResponse(reportRepository.save(report));
+        return ReportMapper.toDTO(reportRepository.save(report));
     }
 
     public List<ReportResponse> findAll() {
         return reportRepository.findAllByOrderByGeneratedAtDesc().stream()
-                .map(this::toResponse)
+                .map(ReportMapper::toDTO)
                 .toList();
     }
 
     public ReportResponse findById(Integer id) {
-        return toResponse(findReport(id));
+        return ReportMapper.toDTO(findReport(id));
     }
 
     @Transactional
     public ReportResponse update(Integer id, ReportRequest request, Integer userId) {
         validatePeriod(request.periodStart(), request.periodEnd());
         Report report = findEditableReport(id, userId);
-        report.setContent(request.content());
+        ReportMapper.updateFromDTO(report, request);
         report.setContentHash(calculateHash(request.content()));
-        report.setPeriodStart(request.periodStart());
-        report.setPeriodEnd(request.periodEnd());
-        return toResponse(reportRepository.save(report));
+        return ReportMapper.toDTO(reportRepository.save(report));
     }
 
     @Transactional
@@ -93,7 +89,7 @@ public class ReportService {
         }
 
         report.setStatus(requestedStatus);
-        return toResponse(reportRepository.save(report));
+        return ReportMapper.toDTO(reportRepository.save(report));
     }
 
     Report findReport(Integer id) {
@@ -130,16 +126,4 @@ public class ReportService {
         }
     }
 
-    private ReportResponse toResponse(Report report) {
-        return new ReportResponse(
-                report.getId(),
-                report.getGeneratedByUserId(),
-                report.getGeneratedAt(),
-                report.getContentHash(),
-                report.getPeriodStart(),
-                report.getPeriodEnd(),
-                report.getStatus(),
-                report.getContent()
-        );
-    }
 }
