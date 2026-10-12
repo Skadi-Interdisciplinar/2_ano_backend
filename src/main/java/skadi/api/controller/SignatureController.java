@@ -16,6 +16,7 @@ import skadi.api.model.User;
 import skadi.api.service.SignatureService;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequiredArgsConstructor
@@ -23,7 +24,7 @@ public class SignatureController {
 
     private final SignatureService service;
 
-    @PostMapping("/reports/{reportId}/signatures")
+    @PostMapping("/reports/{reportId}/signature")
     public ResponseEntity<SignatureResponse> create(
             @PathVariable Integer reportId,
             @Valid @RequestBody SignatureRequest request,
@@ -33,12 +34,21 @@ public class SignatureController {
         return ResponseEntity.status(HttpStatus.CREATED).body(signature);
     }
 
-    @GetMapping("/reports/{reportId}/signatures")
-    public ResponseEntity<List<SignatureResponse>> findByReportId(
+    @GetMapping("/reports/{reportId}/signature")
+    public ResponseEntity<SignatureResponse> findByReportId(
             @PathVariable Integer reportId,
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.findByReportId(reportId, Math.toIntExact(user.getId())));
+        Optional<SignatureResponse> signature = service.findByReportId(
+                reportId, user.getCodCD(), user.getNivelAcesso());
+        return signature.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/signatures")
+    public ResponseEntity<List<SignatureResponse>> findAll(
+            @AuthenticationPrincipal User user
+    ) {
+        return ResponseEntity.ok(service.findAllByCd(user.getCodCD(), user.getNivelAcesso()));
     }
 
     @GetMapping("/signatures/{id}")
@@ -46,7 +56,7 @@ public class SignatureController {
             @PathVariable Integer id,
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.findById(id, Math.toIntExact(user.getId())));
+        return ResponseEntity.ok(service.findById(id, user.getCodCD(), user.getNivelAcesso()));
     }
 
 }

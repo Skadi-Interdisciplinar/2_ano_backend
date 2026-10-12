@@ -18,6 +18,7 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import skadi.api.config.GlobalExceptionHandler;
 import skadi.api.dto.ReportRequest;
+import skadi.api.dto.ReportPatchRequest;
 import skadi.api.dto.ReportResponse;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.enums.ReportStatus;
@@ -39,7 +40,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -54,7 +54,7 @@ class ReportControllerTest {
     @BeforeEach
     void setUp() {
         user = new User(7L, "Test User", "testuser", "12345678901",
-                "test@example.com", "password", NivelAcesso.OPERADOR, 1, null);
+                "test@example.com", "password", NivelAcesso.GESTOR, 1, null);
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
         mockMvc = MockMvcBuilders.standaloneSetup(new ReportController(service))
@@ -131,19 +131,19 @@ class ReportControllerTest {
 
     @Test
     void findAll_returnsReports() throws Exception {
-        when(service.findAll()).thenReturn(List.of(response()));
+        when(service.findAll(1, NivelAcesso.GESTOR)).thenReturn(List.of(response()));
 
         mockMvc.perform(get("/reports"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(12))
                 .andExpect(jsonPath("$[0].contentHash").value("hash-de-teste"));
 
-        verify(service).findAll();
+        verify(service).findAll(1, NivelAcesso.GESTOR);
     }
 
     @Test
     void findAll_returnsEmptyListWhenThereAreNoReports() throws Exception {
-        when(service.findAll()).thenReturn(List.of());
+        when(service.findAll(1, NivelAcesso.GESTOR)).thenReturn(List.of());
 
         mockMvc.perform(get("/reports"))
                 .andExpect(status().isOk())
@@ -152,19 +152,19 @@ class ReportControllerTest {
 
     @Test
     void findById_returnsReport() throws Exception {
-        when(service.findById(12)).thenReturn(response());
+        when(service.findById(12, 1, NivelAcesso.GESTOR)).thenReturn(response());
 
         mockMvc.perform(get("/reports/12"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(12))
                 .andExpect(jsonPath("$.content").value("Relatório de teste"));
 
-        verify(service).findById(12);
+        verify(service).findById(12, 1, NivelAcesso.GESTOR);
     }
 
     @Test
     void findById_returnsNotFoundWhenReportDoesNotExist() throws Exception {
-        when(service.findById(99)).thenThrow(new ReportNotFoundException(99));
+        when(service.findById(99, 1, NivelAcesso.GESTOR)).thenThrow(new ReportNotFoundException(99));
 
         mockMvc.perform(get("/reports/99"))
                 .andExpect(status().isNotFound());
@@ -172,23 +172,23 @@ class ReportControllerTest {
 
     @Test
     void update_returnsUpdatedReportForAuthenticatedAuthor() throws Exception {
-        when(service.update(eq(12), any(ReportRequest.class), eq(7))).thenReturn(response());
+        when(service.update(eq(12), any(ReportPatchRequest.class), eq(7))).thenReturn(response());
 
-        mockMvc.perform(put("/reports/12")
+        mockMvc.perform(patch("/reports/12")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(requestJson()))
+                        .content("{\"content\":\"Conteúdo alterado\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(12));
 
-        verify(service).update(eq(12), any(ReportRequest.class), eq(7));
+        verify(service).update(eq(12), any(ReportPatchRequest.class), eq(7));
     }
 
     @Test
     void update_returnsConflictWhenPeriodIsInvalid() throws Exception {
-        when(service.update(eq(12), any(ReportRequest.class), eq(7)))
+        when(service.update(eq(12), any(ReportPatchRequest.class), eq(7)))
                 .thenThrow(new ReportRuleViolationException("Período inválido"));
 
-        mockMvc.perform(put("/reports/12")
+        mockMvc.perform(patch("/reports/12")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -198,6 +198,19 @@ class ReportControllerTest {
                                 }
                                 """))
                 .andExpect(status().isConflict());
+    }
+
+    @Test
+    void update_acceptsPartialPatchBody() throws Exception {
+        when(service.update(eq(12), any(ReportPatchRequest.class), eq(7))).thenReturn(response());
+
+        mockMvc.perform(patch("/reports/12")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"content\":\"Somente conteúdo atualizado\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(12));
+
+        verify(service).update(eq(12), any(ReportPatchRequest.class), eq(7));
     }
 
     @Test
