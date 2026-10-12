@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 import skadi.api.dto.TemperatureReadingRequest;
 import skadi.api.dto.TemperatureReadingResponse;
 import skadi.api.dto.TemperatureReadingView;
-import skadi.api.exceptions.TemperatureReadingNotFoundException;
+import skadi.api.exceptions.CurrentTemperatureNotFoundException;
 import skadi.api.model.User;
 import skadi.api.service.TemperatureReadingService;
 
@@ -45,6 +45,14 @@ public class TemperatureReadingController {
         return ResponseEntity.ok(service.findAll(user.getCodCD(), user.getNivelAcesso()));
     }
 
+    @GetMapping("/readings/{readingId}")
+    public ResponseEntity<TemperatureReadingView> findById(
+            @PathVariable Integer readingId,
+            @AuthenticationPrincipal User user
+    ) {
+        return ResponseEntity.ok(service.findById(readingId, user.getCodCD(), user.getNivelAcesso()));
+    }
+
     @GetMapping("/readings/cold-rooms/{coldRoomId}")
     public ResponseEntity<List<TemperatureReadingView>> findByColdRoom(
             @PathVariable Long coldRoomId,
@@ -61,7 +69,7 @@ public class TemperatureReadingController {
     ) {
         return service.findCurrentByColdRoom(coldRoomId, user.getCodCD(), user.getNivelAcesso())
                 .map(ResponseEntity::ok)
-                .orElseThrow(() -> new TemperatureReadingNotFoundException(coldRoomId));
+                .orElseThrow(() -> new CurrentTemperatureNotFoundException(coldRoomId));
     }
 
     @GetMapping("/readings/cold-rooms/{coldRoomId}/temperature-history")

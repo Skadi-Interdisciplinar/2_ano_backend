@@ -1,7 +1,7 @@
 package skadi.api.exceptions;
 
 public class TemperatureReadingNotFoundException extends RuntimeException {
-    public TemperatureReadingNotFoundException(Long coldRoomId) {
-        super("Temperatura atual não encontrada para a câmara frigorífica " + coldRoomId);
+    public TemperatureReadingNotFoundException(Integer readingId) {
+        super("Leitura de temperatura não encontrada: " + readingId);
     }
 }

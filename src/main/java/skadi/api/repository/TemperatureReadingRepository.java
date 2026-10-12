@@ -44,6 +44,20 @@ public interface TemperatureReadingRepository extends JpaRepository<TemperatureR
                    l.temperatura, l.data_hora, l.id_evento_redis
             FROM tb_leitura_temperatura l
             JOIN tb_camara_frigorifica c ON c.cod_termometro = l.cod_termometro
+            WHERE l.id = :readingId
+              AND (:allCds = true OR c.cod_cd = :cdId)
+            """, nativeQuery = true)
+    List<Object[]> findByReadingIdAndCd(
+            @Param("readingId") Integer readingId,
+            @Param("cdId") Integer cdId,
+            @Param("allCds") boolean allCds
+    );
+
+    @Query(value = """
+            SELECT l.id, l.cod_termometro, c.id AS cold_room_id, l.cod_alerta,
+                   l.temperatura, l.data_hora, l.id_evento_redis
+            FROM tb_leitura_temperatura l
+            JOIN tb_camara_frigorifica c ON c.cod_termometro = l.cod_termometro
             WHERE c.id = :coldRoomId
               AND (:allCds = true OR c.cod_cd = :cdId)
             ORDER BY l.data_hora DESC

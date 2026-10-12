@@ -19,6 +19,7 @@ import skadi.api.dto.TemperatureReadingResponse;
 import skadi.api.dto.TemperatureReadingView;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.exceptions.ColdRoomNotFoundException;
+import skadi.api.exceptions.TemperatureReadingNotFoundException;
 import skadi.api.model.User;
 import skadi.api.service.TemperatureReadingService;
 
@@ -116,6 +117,27 @@ class TemperatureReadingControllerTest {
                 .andExpect(jsonPath("$[0].coldRoomId").value(3))
                 .andExpect(jsonPath("$[0].temperature").value(-12.50))
                 .andExpect(jsonPath("$[0].eventId").value("evt-123"));
+    }
+
+    @Test
+    void findById_returnsReadingForTheAuthenticatedUsersCd() throws Exception {
+        when(service.findById(10, 1, NivelAcesso.OPERADOR)).thenReturn(reading());
+
+        mockMvc.perform(get("/readings/10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.readingId").value(10))
+                .andExpect(jsonPath("$.coldRoomId").value(3));
+    }
+
+    @Test
+    void findById_returns404WhenReadingIsMissingOrOutsideUsersCd() throws Exception {
+        when(service.findById(10, 1, NivelAcesso.OPERADOR))
+                .thenThrow(new TemperatureReadingNotFoundException(10));
+
+        mockMvc.perform(get("/readings/10"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.statusCode").value(404))
+                .andExpect(jsonPath("$.message").value("Leitura de temperatura não encontrada: 10"));
     }
 
     @Test

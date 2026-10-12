@@ -19,6 +19,7 @@ import skadi.api.dto.TemperatureReadingResponse;
 import skadi.api.dto.TemperatureReadingView;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.exceptions.ColdRoomNotFoundException;
+import skadi.api.exceptions.TemperatureReadingNotFoundException;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -148,6 +149,27 @@ class TemperatureReadingServiceTest {
     }
 
     @Test
+    void findById_returnsMappedReadingWithinUsersCd() {
+        when(repository.findByReadingIdAndCd(10, CD_ID, false))
+                .thenReturn(List.<Object[]>of(row(10, 7, 3, 5)));
+
+        TemperatureReadingView result = service.findById(10, CD_ID, NivelAcesso.OPERADOR);
+
+        assertEquals(10L, result.readingId());
+        assertEquals(3L, result.coldRoomId());
+        assertEquals(5L, result.alertId());
+        verify(repository).findByReadingIdAndCd(10, CD_ID, false);
+    }
+
+    @Test
+    void findById_throwsNotFoundWhenReadingDoesNotExistOrBelongsToAnotherCd() {
+        when(repository.findByReadingIdAndCd(10, CD_ID, false)).thenReturn(List.of());
+
+        assertThrows(TemperatureReadingNotFoundException.class,
+                () -> service.findById(10, CD_ID, NivelAcesso.OPERADOR));
+    }
+
+    @Test
     void findCurrentByColdRoom_returnsMappedMostRecentReading() {
         when(repository.existsColdRoomByIdAndCd(3L, CD_ID, false)).thenReturn(true);
         when(repository.findCurrentByColdRoomIdAndCd(3L, CD_ID, false))
@@ -227,6 +249,8 @@ class TemperatureReadingServiceTest {
 
     @Test
     void superAdminCanReadAcrossCdsWithoutCdAssignment() {
+        when(repository.findByReadingIdAndCd(10, null, true))
+                .thenReturn(List.<Object[]>of(row(10, 7, 3, 5)));
         when(repository.existsColdRoomByIdAndCd(3L, null, true)).thenReturn(true);
         when(repository.findAllWithColdRoomByCd(null, true))
                 .thenReturn(List.<Object[]>of(row(10, 7, 3, 5)));
@@ -236,11 +260,13 @@ class TemperatureReadingServiceTest {
                 .thenReturn(List.<Object[]>of(row(10, 7, 3, 5)));
 
         assertEquals(1, service.findAll(null, NivelAcesso.SUPER_ADMIN).size());
+        assertEquals(10L, service.findById(10, null, NivelAcesso.SUPER_ADMIN).readingId());
         assertEquals(10L, service.findCurrentByColdRoom(3L, null, NivelAcesso.SUPER_ADMIN)
                 .orElseThrow().readingId());
         assertEquals(1, service.findHistoryByColdRoom(3L, null, NivelAcesso.SUPER_ADMIN, null, null).size());
 
         verify(repository).findAllWithColdRoomByCd(null, true);
+        verify(repository).findByReadingIdAndCd(10, null, true);
         verify(repository).findCurrentByColdRoomIdAndCd(3L, null, true);
         verify(repository).findHistoryByColdRoomIdAndCd(3L, null, true, null, null);
     }

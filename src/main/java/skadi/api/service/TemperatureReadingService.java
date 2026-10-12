@@ -13,6 +13,7 @@ import skadi.api.dto.TemperatureReadingRequest;
 import skadi.api.dto.TemperatureReadingResponse;
 import skadi.api.dto.TemperatureReadingView;
 import skadi.api.exceptions.ColdRoomNotFoundException;
+import skadi.api.exceptions.TemperatureReadingNotFoundException;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.repository.TemperatureReadingRepository;
 
@@ -80,6 +81,14 @@ public class TemperatureReadingService {
         return repository.findAllWithColdRoomByCd(cdId, allCds).stream()
                 .map(this::toView)
                 .toList();
+    }
+
+    public TemperatureReadingView findById(Integer readingId, Integer cdId, NivelAcesso accessLevel) {
+        boolean allCds = hasGlobalReadAccess(cdId, accessLevel);
+        return repository.findByReadingIdAndCd(readingId, cdId, allCds).stream()
+                .findFirst()
+                .map(this::toView)
+                .orElseThrow(() -> new TemperatureReadingNotFoundException(readingId));
     }
 
     public Optional<TemperatureReadingView> findCurrentByColdRoom(
