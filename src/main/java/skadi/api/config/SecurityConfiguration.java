@@ -62,7 +62,7 @@ public class SecurityConfiguration {
                                 )
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login").permitAll()
+                        .requestMatchers("/batches", "/batches/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/register").hasRole("SUPER_ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/super_admin/**").hasRole("SUPER_ADMIN")

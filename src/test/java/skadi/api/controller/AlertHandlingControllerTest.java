@@ -104,13 +104,13 @@ class AlertHandlingControllerTest {
     }
 
     @Test
-    void update_currentlyReturnsInternalServerErrorWhenStatusIsInvalid() throws Exception {
+    void update_returnsBadRequestWhenStatusIsInvalid() throws Exception {
         mockMvc.perform(put("/alerts/3/alert-handlings/10")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "status": "INVALIDO" }
                                 """))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest());
     }
 
     @Test
