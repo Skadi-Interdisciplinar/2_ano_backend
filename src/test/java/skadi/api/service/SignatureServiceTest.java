@@ -9,6 +9,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import skadi.api.dto.SignatureRequest;
 import skadi.api.dto.SignatureResponse;
 import skadi.api.enums.ReportStatus;
+import skadi.api.enums.NivelAcesso;
 import skadi.api.exceptions.ReportRuleViolationException;
 import skadi.api.exceptions.SignatureAlreadyExistsException;
 import skadi.api.exceptions.SignatureNotFoundException;
@@ -23,11 +24,13 @@ import java.security.KeyPairGenerator;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.security.access.AccessDeniedException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -122,44 +125,85 @@ class SignatureServiceTest {
     }
 
     @Test
-    void findByReportId_returnsMappedSignatures() {
+    void findByReportId_returnsMappedSignature() {
+        Report report = report(ReportStatus.ASSINADO);
         Signature signature = signature(12, 4);
-        when(repository.findByReportIdOrderByIdDesc(4)).thenReturn(List.of(signature));
+        when(reportService.findReportForCd(4, 1, NivelAcesso.GESTOR)).thenReturn(report);
+        when(repository.findByReportIdAndAuthorCd(4, 1)).thenReturn(Optional.of(signature));
 
-        List<SignatureResponse> result = service.findByReportId(4, 7);
+        Optional<SignatureResponse> result = service.findByReportId(4, 1, NivelAcesso.GESTOR);
 
-        verify(reportService).findReportForAuthor(4, 7);
-        verify(repository).findByReportIdOrderByIdDesc(4);
+        verify(reportService).findReportForCd(4, 1, NivelAcesso.GESTOR);
+        verify(repository).findByReportIdAndAuthorCd(4, 1);
+        assertEquals(true, result.isPresent());
+        assertResponse(result.orElseThrow(), signature);
+    }
+
+    @Test
+    void findByReportId_returnsEmptyWhenNoneExists() {
+        when(reportService.findReportForCd(4, 1, NivelAcesso.ADMIN)).thenReturn(report(ReportStatus.GERADO));
+        when(repository.findByReportIdAndAuthorCd(4, 1)).thenReturn(Optional.empty());
+
+        Optional<SignatureResponse> result = service.findByReportId(4, 1, NivelAcesso.ADMIN);
+
+        assertEquals(Optional.empty(), result);
+        verify(reportService).findReportForCd(4, 1, NivelAcesso.ADMIN);
+    }
+
+    @Test
+    void findAllByCd_returnsSignaturesForUsersCd() {
+        Signature signature = signature(12, 4);
+        when(repository.findAllByReportAuthorCdOrderByIdDesc(1)).thenReturn(List.of(signature));
+
+        List<SignatureResponse> result = service.findAllByCd(1, NivelAcesso.GESTOR);
+
+        verify(repository).findAllByReportAuthorCdOrderByIdDesc(1);
         assertEquals(1, result.size());
         assertResponse(result.get(0), signature);
     }
 
     @Test
-    void findByReportId_returnsEmptyListWhenNoneExist() {
-        when(repository.findByReportIdOrderByIdDesc(4)).thenReturn(List.of());
+    void findAllByCd_returnsEmptyListWhenCdHasNoSignatures() {
+        when(repository.findAllByReportAuthorCdOrderByIdDesc(1)).thenReturn(List.of());
 
-        List<SignatureResponse> result = service.findByReportId(4, 7);
-
-        assertEquals(List.of(), result);
-        verify(reportService).findReportForAuthor(4, 7);
+        assertEquals(List.of(), service.findAllByCd(1, NivelAcesso.ADMIN));
     }
 
     @Test
-    void findById_returnsSignatureForReportAuthor() {
+    void findById_returnsSignatureForReportAuthorCd() {
         Signature signature = signature(12, 4);
-        when(repository.findById(12)).thenReturn(Optional.of(signature));
+        when(repository.findByIdAndReportAuthorCd(12, 1)).thenReturn(Optional.of(signature));
 
-        SignatureResponse result = service.findById(12, 7);
+        SignatureResponse result = service.findById(12, 1, NivelAcesso.GESTOR);
 
-        verify(reportService).findReportForAuthor(4, 7);
+        verify(repository).findByIdAndReportAuthorCd(12, 1);
         assertResponse(result, signature);
     }
 
     @Test
     void findById_throwsWhenSignatureDoesNotExist() {
-        when(repository.findById(99)).thenReturn(Optional.empty());
+        when(repository.findByIdAndReportAuthorCd(99, 1)).thenReturn(Optional.empty());
 
-        assertThrows(SignatureNotFoundException.class, () -> service.findById(99, 7));
+        assertThrows(SignatureNotFoundException.class,
+                () -> service.findById(99, 1, NivelAcesso.ADMIN));
+    }
+
+    @Test
+    void findAllByCd_rejectsOperatorOrMissingCd() {
+        doThrow(new AccessDeniedException("Sem permissão"))
+                .when(reportService).requireReportReadAccess(1, NivelAcesso.OPERADOR);
+        doThrow(new AccessDeniedException("Sem CD"))
+                .when(reportService).requireReportReadAccess(null, NivelAcesso.GESTOR);
+        assertThrows(AccessDeniedException.class, () -> service.findAllByCd(1, NivelAcesso.OPERADOR));
+        assertThrows(AccessDeniedException.class, () -> service.findAllByCd(null, NivelAcesso.GESTOR));
+    }
+
+    @Test
+    void findById_rejectsSuperAdmin() {
+        doThrow(new AccessDeniedException("Sem permissão"))
+                .when(reportService).requireReportReadAccess(1, NivelAcesso.SUPER_ADMIN);
+        assertThrows(AccessDeniedException.class,
+                () -> service.findById(12, 1, NivelAcesso.SUPER_ADMIN));
     }
 
     private Report report(ReportStatus status) {

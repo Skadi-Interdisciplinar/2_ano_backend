@@ -28,6 +28,7 @@ import skadi.api.service.SignatureService;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -50,7 +51,7 @@ class SignatureControllerTest {
     @BeforeEach
     void setUp() {
         user = new User(7L, "Test User", "testuser", "12345678901",
-                "test@example.com", "password", NivelAcesso.OPERADOR, 1, null);
+                "test@example.com", "password", NivelAcesso.GESTOR, 1, null);
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
         mockMvc = MockMvcBuilders.standaloneSetup(new SignatureController(service))
@@ -83,7 +84,7 @@ class SignatureControllerTest {
         when(service.create(eq(4), any(SignatureRequest.class), eq(7)))
                 .thenReturn(response());
 
-        mockMvc.perform(post("/reports/4/signatures")
+        mockMvc.perform(post("/reports/4/signature")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson()))
                 .andExpect(status().isCreated())
@@ -97,7 +98,7 @@ class SignatureControllerTest {
 
     @Test
     void create_returnsBadRequestWhenRequiredFieldIsBlank() throws Exception {
-        mockMvc.perform(post("/reports/4/signatures")
+        mockMvc.perform(post("/reports/4/signature")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -117,7 +118,7 @@ class SignatureControllerTest {
 
     @Test
     void create_returnsBadRequestWhenPublicKeyIsBlank() throws Exception {
-        mockMvc.perform(post("/reports/4/signatures")
+        mockMvc.perform(post("/reports/4/signature")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -140,7 +141,7 @@ class SignatureControllerTest {
         when(service.create(eq(4), any(SignatureRequest.class), eq(7)))
                 .thenThrow(new ReportRuleViolationException("Relatório já assinado"));
 
-        mockMvc.perform(post("/reports/4/signatures")
+        mockMvc.perform(post("/reports/4/signature")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson()))
                 .andExpect(status().isConflict());
@@ -151,7 +152,7 @@ class SignatureControllerTest {
         when(service.create(eq(4), any(SignatureRequest.class), eq(7)))
                 .thenThrow(new SignatureAlreadyExistsException(4));
 
-        mockMvc.perform(post("/reports/4/signatures")
+        mockMvc.perform(post("/reports/4/signature")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson()))
                 .andExpect(status().isConflict())
@@ -160,28 +161,48 @@ class SignatureControllerTest {
 
     @Test
     void findByReportId_returnsSignatures() throws Exception {
-        when(service.findByReportId(4, 7)).thenReturn(List.of(response()));
+        when(service.findByReportId(4, 1, NivelAcesso.GESTOR)).thenReturn(Optional.of(response()));
 
-        mockMvc.perform(get("/reports/4/signatures"))
+        mockMvc.perform(get("/reports/4/signature"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(12))
+                .andExpect(jsonPath("$.reportId").value(4));
+
+        verify(service).findByReportId(4, 1, NivelAcesso.GESTOR);
+    }
+
+    @Test
+    void findByReportId_returnsNotFoundWhenNoneExists() throws Exception {
+        when(service.findByReportId(4, 1, NivelAcesso.GESTOR)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/reports/4/signature"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void findAll_returnsSignaturesForAuthenticatedUsersCd() throws Exception {
+        when(service.findAllByCd(1, NivelAcesso.GESTOR)).thenReturn(List.of(response()));
+
+        mockMvc.perform(get("/signatures"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(12))
                 .andExpect(jsonPath("$[0].reportId").value(4));
 
-        verify(service).findByReportId(4, 7);
+        verify(service).findAllByCd(1, NivelAcesso.GESTOR);
     }
 
     @Test
-    void findByReportId_returnsEmptyListWhenNoneExist() throws Exception {
-        when(service.findByReportId(4, 7)).thenReturn(List.of());
+    void findAll_returnsEmptyListWhenUserHasNoSignatures() throws Exception {
+        when(service.findAllByCd(1, NivelAcesso.GESTOR)).thenReturn(List.of());
 
-        mockMvc.perform(get("/reports/4/signatures"))
+        mockMvc.perform(get("/signatures"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").isEmpty());
     }
 
     @Test
     void findById_returnsSignature() throws Exception {
-        when(service.findById(12, 7)).thenReturn(response());
+        when(service.findById(12, 1, NivelAcesso.GESTOR)).thenReturn(response());
 
         mockMvc.perform(get("/signatures/12"))
                 .andExpect(status().isOk())
@@ -191,7 +212,7 @@ class SignatureControllerTest {
 
     @Test
     void findById_returnsNotFoundWhenSignatureDoesNotExist() throws Exception {
-        when(service.findById(99, 7)).thenThrow(new SignatureNotFoundException(99));
+        when(service.findById(99, 1, NivelAcesso.GESTOR)).thenThrow(new SignatureNotFoundException(99));
 
         mockMvc.perform(get("/signatures/99"))
                 .andExpect(status().isNotFound());

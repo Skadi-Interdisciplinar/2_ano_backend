@@ -7,7 +7,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import skadi.api.dto.ReportRequest;
+import skadi.api.dto.ReportPatchRequest;
 import skadi.api.dto.ReportResponse;
+import skadi.api.enums.NivelAcesso;
 import skadi.api.enums.ReportStatus;
 import skadi.api.exceptions.ReportNotFoundException;
 import skadi.api.exceptions.ReportRuleViolationException;
@@ -24,6 +26,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.springframework.security.access.AccessDeniedException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -35,6 +38,7 @@ class ReportServiceTest {
 
     private static final Integer REPORT_ID = 12;
     private static final Integer AUTHOR_ID = 7;
+    private static final Integer CD_ID = 1;
     private static final LocalDate PERIOD_START = LocalDate.of(2026, 9, 1);
     private static final LocalDate PERIOD_END = LocalDate.of(2026, 9, 30);
 
@@ -86,9 +90,9 @@ class ReportServiceTest {
     void findAll_returnsReportsMappedInRepositoryOrder() {
         Report first = report(REPORT_ID, AUTHOR_ID, ReportStatus.GERADO);
         Report second = report(13, 8, ReportStatus.ASSINADO);
-        when(reportRepository.findAllByOrderByGeneratedAtDesc()).thenReturn(List.of(first, second));
+        when(reportRepository.findAllByAuthorCdOrderByGeneratedAtDesc(CD_ID)).thenReturn(List.of(first, second));
 
-        List<ReportResponse> result = service.findAll();
+        List<ReportResponse> result = service.findAll(CD_ID, NivelAcesso.GESTOR);
 
         assertEquals(2, result.size());
         assertResponse(result.get(0), first);
@@ -97,32 +101,47 @@ class ReportServiceTest {
 
     @Test
     void findAll_returnsEmptyListWhenThereAreNoReports() {
-        when(reportRepository.findAllByOrderByGeneratedAtDesc()).thenReturn(List.of());
+        when(reportRepository.findAllByAuthorCdOrderByGeneratedAtDesc(CD_ID)).thenReturn(List.of());
 
-        assertEquals(List.of(), service.findAll());
+        assertEquals(List.of(), service.findAll(CD_ID, NivelAcesso.ADMIN));
     }
 
     @Test
     void findById_returnsMappedReport() {
         Report report = report(REPORT_ID, AUTHOR_ID, ReportStatus.GERADO);
-        when(reportRepository.findById(REPORT_ID)).thenReturn(Optional.of(report));
+        when(reportRepository.findByIdAndAuthorCd(REPORT_ID, CD_ID)).thenReturn(Optional.of(report));
 
-        ReportResponse result = service.findById(REPORT_ID);
+        ReportResponse result = service.findById(REPORT_ID, CD_ID, NivelAcesso.GESTOR);
 
         assertResponse(result, report);
     }
 
     @Test
     void findById_throwsWhenReportDoesNotExist() {
-        when(reportRepository.findById(REPORT_ID)).thenReturn(Optional.empty());
+        when(reportRepository.findByIdAndAuthorCd(REPORT_ID, CD_ID)).thenReturn(Optional.empty());
 
-        assertThrows(ReportNotFoundException.class, () -> service.findById(REPORT_ID));
+        assertThrows(ReportNotFoundException.class,
+                () -> service.findById(REPORT_ID, CD_ID, NivelAcesso.ADMIN));
+    }
+
+    @Test
+    void findAll_rejectsUsersWithoutReportAccess() {
+        assertThrows(AccessDeniedException.class, () -> service.findAll(CD_ID, NivelAcesso.OPERADOR));
+        assertThrows(AccessDeniedException.class, () -> service.findAll(null, NivelAcesso.GESTOR));
+        verifyNoInteractions(reportRepository);
+    }
+
+    @Test
+    void findById_rejectsSuperAdmin() {
+        assertThrows(AccessDeniedException.class,
+                () -> service.findById(REPORT_ID, CD_ID, NivelAcesso.SUPER_ADMIN));
+        verifyNoInteractions(reportRepository);
     }
 
     @Test
     void update_changesContentHashAndPeriodForAuthorOfGeneratedReport() throws Exception {
         Report report = report(REPORT_ID, AUTHOR_ID, ReportStatus.GERADO);
-        ReportRequest request = request("conteúdo atualizado", PERIOD_START.plusDays(1), PERIOD_END);
+        ReportPatchRequest request = new ReportPatchRequest("conteúdo atualizado", PERIOD_START.plusDays(1), PERIOD_END);
         when(reportRepository.findByIdAndGeneratedByUserId(REPORT_ID, AUTHOR_ID))
                 .thenReturn(Optional.of(report));
         when(reportRepository.save(report)).thenReturn(report);
@@ -138,13 +157,47 @@ class ReportServiceTest {
     }
 
     @Test
-    void update_rejectsInvalidPeriodBeforeAccessingRepository() {
-        ReportRequest request = request("conteúdo", PERIOD_END, PERIOD_START);
+    void update_changesOnlyProvidedContentAndPreservesOtherFields() throws Exception {
+        Report report = report(REPORT_ID, AUTHOR_ID, ReportStatus.GERADO);
+        report.setContent("conteúdo original");
+        report.setContentHash(sha256("conteúdo original"));
+        report.setPeriodStart(PERIOD_START);
+        report.setPeriodEnd(PERIOD_END);
+        ReportPatchRequest request = new ReportPatchRequest("conteúdo novo", null, null);
+        when(reportRepository.findByIdAndGeneratedByUserId(REPORT_ID, AUTHOR_ID))
+                .thenReturn(Optional.of(report));
+        when(reportRepository.save(report)).thenReturn(report);
+
+        ReportResponse result = service.update(REPORT_ID, request, AUTHOR_ID);
+
+        assertEquals("conteúdo novo", report.getContent());
+        assertEquals(sha256("conteúdo novo"), report.getContentHash());
+        assertEquals(PERIOD_START, report.getPeriodStart());
+        assertEquals(PERIOD_END, report.getPeriodEnd());
+        assertResponse(result, report);
+    }
+
+    @Test
+    void update_rejectsEmptyPatch() {
+        assertThrows(ReportRuleViolationException.class,
+                () -> service.update(REPORT_ID, new ReportPatchRequest(null, null, null), AUTHOR_ID));
+
+        verifyNoInteractions(reportRepository, signatureRepository);
+    }
+
+    @Test
+    void update_rejectsInvalidPeriodAfterMergingWithExistingPeriod() {
+        Report report = report(REPORT_ID, AUTHOR_ID, ReportStatus.GERADO);
+        report.setPeriodStart(PERIOD_START);
+        report.setPeriodEnd(PERIOD_END);
+        ReportPatchRequest request = new ReportPatchRequest(null, PERIOD_END.plusDays(1), null);
+        when(reportRepository.findByIdAndGeneratedByUserId(REPORT_ID, AUTHOR_ID))
+                .thenReturn(Optional.of(report));
 
         assertThrows(ReportRuleViolationException.class,
                 () -> service.update(REPORT_ID, request, AUTHOR_ID));
 
-        verifyNoInteractions(reportRepository, signatureRepository);
+        verify(reportRepository, never()).save(any(Report.class));
     }
 
     @Test
@@ -153,7 +206,7 @@ class ReportServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(ReportNotFoundException.class,
-                () -> service.update(REPORT_ID, request("novo", PERIOD_START, PERIOD_END), AUTHOR_ID));
+                () -> service.update(REPORT_ID, new ReportPatchRequest("novo", null, null), AUTHOR_ID));
     }
 
     @Test
@@ -163,7 +216,7 @@ class ReportServiceTest {
                 .thenReturn(Optional.of(report));
 
         assertThrows(ReportRuleViolationException.class,
-                () -> service.update(REPORT_ID, request("novo", PERIOD_START, PERIOD_END), AUTHOR_ID));
+                () -> service.update(REPORT_ID, new ReportPatchRequest("novo", null, null), AUTHOR_ID));
 
         verify(reportRepository, never()).save(any(Report.class));
     }

@@ -9,12 +9,14 @@ import skadi.api.exceptions.SignatureNotFoundException;
 import skadi.api.exceptions.SignatureAlreadyExistsException;
 import skadi.api.exceptions.ReportRuleViolationException;
 import skadi.api.enums.ReportStatus;
+import skadi.api.enums.NivelAcesso;
 import skadi.api.mapper.SignatureMapper;
 import skadi.api.model.Report;
 import skadi.api.model.Signature;
 import skadi.api.repository.SignatureRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -47,22 +49,23 @@ public class SignatureService {
         return SignatureMapper.toDTO(savedSignature);
     }
 
-    public List<SignatureResponse> findByReportId(Integer reportId, Integer userId) {
-        reportService.findReportForAuthor(reportId, userId);
-        return repository.findByReportIdOrderByIdDesc(reportId).stream()
+    public Optional<SignatureResponse> findByReportId(Integer reportId, Integer cdId, NivelAcesso accessLevel) {
+        reportService.findReportForCd(reportId, cdId, accessLevel);
+        return repository.findByReportIdAndAuthorCd(reportId, cdId).map(SignatureMapper::toDTO);
+    }
+
+    public List<SignatureResponse> findAllByCd(Integer cdId, NivelAcesso accessLevel) {
+        reportService.requireReportReadAccess(cdId, accessLevel);
+        return repository.findAllByReportAuthorCdOrderByIdDesc(cdId).stream()
                 .map(SignatureMapper::toDTO)
                 .toList();
     }
 
-    public SignatureResponse findById(Integer id, Integer userId) {
-        Signature signature = findSignature(id);
-        reportService.findReportForAuthor(signature.getReportId(), userId);
-        return SignatureMapper.toDTO(signature);
-    }
-
-    private Signature findSignature(Integer id) {
-        return repository.findById(id)
+    public SignatureResponse findById(Integer id, Integer cdId, NivelAcesso accessLevel) {
+        reportService.requireReportReadAccess(cdId, accessLevel);
+        Signature signature = repository.findByIdAndReportAuthorCd(id, cdId)
                 .orElseThrow(() -> new SignatureNotFoundException(id));
+        return SignatureMapper.toDTO(signature);
     }
 
 }

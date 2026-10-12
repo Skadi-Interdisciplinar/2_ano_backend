@@ -2,12 +2,15 @@ package skadi.api.service;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import skadi.api.dto.ReportRequest;
+import skadi.api.dto.ReportPatchRequest;
 import skadi.api.dto.ReportResponse;
 import skadi.api.exceptions.ReportNotFoundException;
 import skadi.api.exceptions.ReportRuleViolationException;
 import skadi.api.enums.ReportStatus;
+import skadi.api.enums.NivelAcesso;
 import skadi.api.mapper.ReportMapper;
 import skadi.api.model.Report;
 import skadi.api.repository.ReportRepository;
@@ -44,22 +47,49 @@ public class ReportService {
         return ReportMapper.toDTO(reportRepository.save(report));
     }
 
-    public List<ReportResponse> findAll() {
-        return reportRepository.findAllByOrderByGeneratedAtDesc().stream()
+    public List<ReportResponse> findAll(Integer cdId, NivelAcesso accessLevel) {
+        requireReportReadAccess(cdId, accessLevel);
+        return reportRepository.findAllByAuthorCdOrderByGeneratedAtDesc(cdId).stream()
                 .map(ReportMapper::toDTO)
                 .toList();
     }
 
-    public ReportResponse findById(Integer id) {
-        return ReportMapper.toDTO(findReport(id));
+    public ReportResponse findById(Integer id, Integer cdId, NivelAcesso accessLevel) {
+        return ReportMapper.toDTO(findReportForCd(id, cdId, accessLevel));
+    }
+
+    public Report findReportForCd(Integer id, Integer cdId, NivelAcesso accessLevel) {
+        requireReportReadAccess(cdId, accessLevel);
+        return reportRepository.findByIdAndAuthorCd(id, cdId)
+                .orElseThrow(() -> new ReportNotFoundException(id));
+    }
+
+    public void requireReportReadAccess(Integer cdId, NivelAcesso accessLevel) {
+        if (cdId == null || (accessLevel != NivelAcesso.ADMIN && accessLevel != NivelAcesso.GESTOR)) {
+            throw new AccessDeniedException("Somente ADMIN e GESTOR vinculados a um CD podem consultar relatórios.");
+        }
     }
 
     @Transactional
-    public ReportResponse update(Integer id, ReportRequest request, Integer userId) {
-        validatePeriod(request.periodStart(), request.periodEnd());
+    public ReportResponse update(Integer id, ReportPatchRequest request, Integer userId) {
+        if (request.content() == null && request.periodStart() == null && request.periodEnd() == null) {
+            throw new ReportRuleViolationException("Informe ao menos um campo para atualizar.");
+        }
+        if (request.content() != null && request.content().isBlank()) {
+            throw new ReportRuleViolationException("O conteúdo do relatório não pode ficar em branco.");
+        }
+
         Report report = findEditableReport(id, userId);
+        java.time.LocalDate periodStart = request.periodStart() != null
+                ? request.periodStart() : report.getPeriodStart();
+        java.time.LocalDate periodEnd = request.periodEnd() != null
+                ? request.periodEnd() : report.getPeriodEnd();
+        validatePeriod(periodStart, periodEnd);
+
         ReportMapper.updateFromDTO(report, request);
-        report.setContentHash(calculateHash(request.content()));
+        if (request.content() != null) {
+            report.setContentHash(calculateHash(request.content()));
+        }
         return ReportMapper.toDTO(reportRepository.save(report));
     }
 
@@ -90,11 +120,6 @@ public class ReportService {
 
         report.setStatus(requestedStatus);
         return ReportMapper.toDTO(reportRepository.save(report));
-    }
-
-    Report findReport(Integer id) {
-        return reportRepository.findById(id)
-                .orElseThrow(() -> new ReportNotFoundException(id));
     }
 
     Report findReportForAuthor(Integer id, Integer userId) {
