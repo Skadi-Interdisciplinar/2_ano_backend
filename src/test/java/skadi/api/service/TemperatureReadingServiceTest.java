@@ -36,6 +36,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class TemperatureReadingServiceTest {
 
+    private static final LocalDateTime MEASURED_AT = LocalDateTime.of(2026, 10, 4, 10, 0);
+
     @Mock
     private StringRedisTemplate redisTemplate;
 
@@ -136,6 +138,7 @@ class TemperatureReadingServiceTest {
         assertEquals(3L, result.get(0).coldRoomId());
         assertEquals(5L, result.get(0).alertId());
         assertEquals(new BigDecimal("-12.50"), result.get(0).temperature());
+        assertEquals(MEASURED_AT, result.get(0).measuredAt());
     }
 
     @Test
@@ -147,6 +150,7 @@ class TemperatureReadingServiceTest {
         assertEquals(10L, result.orElseThrow().readingId());
         assertEquals(3L, result.orElseThrow().coldRoomId());
         assertEquals(null, result.orElseThrow().alertId());
+        assertEquals(MEASURED_AT, result.orElseThrow().measuredAt());
     }
 
     @Test
@@ -167,7 +171,17 @@ class TemperatureReadingServiceTest {
 
         assertEquals(1, result.size());
         assertEquals(10L, result.get(0).readingId());
+        assertEquals(MEASURED_AT, result.get(0).measuredAt());
         verify(repository).findHistoryByColdRoomId(3L, from, to);
+    }
+
+    @Test
+    void findAll_mapsTimestampRepositoryValue() {
+        Object[] row = row(10, 7, 3, 5);
+        row[5] = Timestamp.valueOf(MEASURED_AT);
+        when(repository.findAllWithColdRoom()).thenReturn(List.<Object[]>of(row));
+
+        assertEquals(MEASURED_AT, service.findAll().get(0).measuredAt());
     }
 
     private TemperatureReadingRequest request() {
@@ -189,7 +203,7 @@ class TemperatureReadingServiceTest {
                 coldRoomId,
                 alertId,
                 new BigDecimal("-12.50"),
-                Timestamp.valueOf("2026-10-04 10:00:00"),
+                MEASURED_AT,
                 "evt-123"
         };
     }

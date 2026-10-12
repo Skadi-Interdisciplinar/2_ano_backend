@@ -101,9 +101,19 @@ public class TemperatureReadingService {
                 ((Number) row[2]).longValue(),
                 row[3] == null ? null : ((Number) row[3]).longValue(),
                 (java.math.BigDecimal) row[4],
-                ((Timestamp) row[5]).toLocalDateTime(),
+                toLocalDateTime(row[5]),
                 (String) row[6]
         );
+    }
+
+    private LocalDateTime toLocalDateTime(Object value) {
+        if (value instanceof LocalDateTime localDateTime) {
+            return localDateTime;
+        }
+        if (value instanceof Timestamp timestamp) {
+            return timestamp.toLocalDateTime();
+        }
+        throw new IllegalArgumentException("Tipo de data/hora não suportado: " + value.getClass().getName());
     }
 
     private String eventIdFor(TemperatureReadingRequest request) {
