@@ -47,26 +47,26 @@ class CategoryControllerTest {
     void createReturns201AndCreatedCategory() throws Exception {
         when(service.create(any())).thenReturn(category());
 
-        mockMvc.perform(post("/categorias")
+        mockMvc.perform(post("/categories")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequest()))
                 .andExpect(status().isCreated())
-                .andExpect(header().string("Location", "/categorias/1"))
+                .andExpect(header().string("Location", "/categories/1"))
                 .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.nome").value("Congelados"))
-                .andExpect(jsonPath("$.temperaturaIdeal").value(-18.00))
-                .andExpect(jsonPath("$.vidaUtilHoras").value(48.00));
+                .andExpect(jsonPath("$.name").value("Congelados"))
+                .andExpect(jsonPath("$.idealTemperature").value(-18.00))
+                .andExpect(jsonPath("$.shelfLifeHours").value(48.00));
     }
 
     @Test
     void createReturns400WhenLifeSpanIsNotPositive() throws Exception {
-        mockMvc.perform(post("/categorias")
+        mockMvc.perform(post("/categories")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "nome": "Congelados",
-                                  "temperaturaIdeal": -18.00,
-                                  "vidaUtilHoras": 0
+                                  "name": "Congelados",
+                                  "idealTemperature": -18.00,
+                                  "shelfLifeHours": 0
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
@@ -77,16 +77,16 @@ class CategoryControllerTest {
     void findAllReturnsCategories() throws Exception {
         when(service.findAll()).thenReturn(List.of(category()));
 
-        mockMvc.perform(get("/categorias"))
+        mockMvc.perform(get("/categories"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].nome").value("Congelados"));
+                .andExpect(jsonPath("$[0].name").value("Congelados"));
     }
 
     @Test
     void findByIdReturnsCategory() throws Exception {
         when(service.findById(1L)).thenReturn(category());
 
-        mockMvc.perform(get("/categorias/1"))
+        mockMvc.perform(get("/categories/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1));
     }
@@ -95,18 +95,18 @@ class CategoryControllerTest {
     void updateReturnsUpdatedCategory() throws Exception {
         when(service.update(eq(1L), any())).thenReturn(category());
 
-        mockMvc.perform(put("/categorias/1")
+        mockMvc.perform(put("/categories/1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequest()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.nome").value("Congelados"));
+                .andExpect(jsonPath("$.name").value("Congelados"));
     }
 
     @Test
     void deleteReturns204() throws Exception {
         doNothing().when(service).delete(1L);
 
-        mockMvc.perform(delete("/categorias/1"))
+        mockMvc.perform(delete("/categories/1"))
                 .andExpect(status().isNoContent());
     }
 
@@ -122,9 +122,9 @@ class CategoryControllerTest {
     private String validRequest() {
         return """
                 {
-                  "nome": "Congelados",
-                  "temperaturaIdeal": -18.00,
-                  "vidaUtilHoras": 48.00
+                  "name": "Congelados",
+                  "idealTemperature": -18.00,
+                  "shelfLifeHours": 48.00
                 }
                 """;
     }

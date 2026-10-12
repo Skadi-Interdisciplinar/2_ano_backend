@@ -4,8 +4,8 @@ import java.math.BigDecimal;
 
 public record CategoryResponse(
         Long id,
-        String nome,
-        BigDecimal temperaturaIdeal,
-        BigDecimal vidaUtilHoras
+        String name,
+        BigDecimal idealTemperature,
+        BigDecimal shelfLifeHours
 ) {
 }

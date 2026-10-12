@@ -19,7 +19,7 @@ import java.net.URI;
 import java.util.List;
 
 @RestController
-@RequestMapping("/categorias")
+@RequestMapping("/categories")
 @RequiredArgsConstructor
 public class CategoryController {
 
@@ -30,7 +30,7 @@ public class CategoryController {
             @Valid @RequestBody CategoryRequest request
     ) {
         CategoryResponse response = service.create(request);
-        return ResponseEntity.created(URI.create("/categorias/" + response.id()))
+        return ResponseEntity.created(URI.create("/categories/" + response.id()))
                 .body(response);
     }
 

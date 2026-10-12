@@ -22,8 +22,8 @@ public class CategoryService {
 
     @Transactional
     public CategoryResponse create(CategoryRequest request) {
-        String nome = request.nome().trim();
-        if (repository.existsByNomeIgnoreCase(nome)) {
+        String name = request.name().trim();
+        if (repository.existsByNameIgnoreCase(name)) {
             throw new CategoryAlreadyExistsException("Já existe uma categoria com esse nome");
         }
 
@@ -33,7 +33,7 @@ public class CategoryService {
 
     @Transactional(readOnly = true)
     public List<CategoryResponse> findAll() {
-        return repository.findAll(Sort.by(Sort.Direction.ASC, "nome"))
+        return repository.findAll(Sort.by(Sort.Direction.ASC, "name"))
                 .stream()
                 .map(CategoryMapper::toResponse)
                 .toList();
@@ -47,8 +47,8 @@ public class CategoryService {
     @Transactional
     public CategoryResponse update(Long id, CategoryRequest request) {
         Category category = findEntityById(id);
-        String nome = request.nome().trim();
-        if (repository.existsByNomeIgnoreCaseAndIdNot(nome, id)) {
+        String name = request.name().trim();
+        if (repository.existsByNameIgnoreCaseAndIdNot(name, id)) {
             throw new CategoryAlreadyExistsException("Já existe outra categoria com esse nome");
         }
 
