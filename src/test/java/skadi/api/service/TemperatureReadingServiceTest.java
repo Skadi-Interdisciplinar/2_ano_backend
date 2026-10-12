@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.data.redis.connection.RedisStreamCommands;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.RecordId;
@@ -16,6 +17,8 @@ import org.springframework.test.util.ReflectionTestUtils;
 import skadi.api.dto.TemperatureReadingRequest;
 import skadi.api.dto.TemperatureReadingResponse;
 import skadi.api.dto.TemperatureReadingView;
+import skadi.api.enums.NivelAcesso;
+import skadi.api.exceptions.ColdRoomNotFoundException;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -37,6 +40,7 @@ import static org.mockito.Mockito.when;
 class TemperatureReadingServiceTest {
 
     private static final LocalDateTime MEASURED_AT = LocalDateTime.of(2026, 10, 4, 10, 0);
+    private static final Integer CD_ID = 1;
 
     @Mock
     private StringRedisTemplate redisTemplate;
@@ -128,9 +132,10 @@ class TemperatureReadingServiceTest {
 
     @Test
     void findAll_mapsRepositoryRowsToViews() {
-        when(repository.findAllWithColdRoom()).thenReturn(List.<Object[]>of(row(10, 7, 3, 5)));
+        when(repository.findAllWithColdRoomByCd(CD_ID, false))
+                .thenReturn(List.<Object[]>of(row(10, 7, 3, 5)));
 
-        List<TemperatureReadingView> result = service.findAll();
+        List<TemperatureReadingView> result = service.findAll(CD_ID, NivelAcesso.OPERADOR);
 
         assertEquals(1, result.size());
         assertEquals(10L, result.get(0).readingId());
@@ -139,49 +144,105 @@ class TemperatureReadingServiceTest {
         assertEquals(5L, result.get(0).alertId());
         assertEquals(new BigDecimal("-12.50"), result.get(0).temperature());
         assertEquals(MEASURED_AT, result.get(0).measuredAt());
+        verify(repository).findAllWithColdRoomByCd(CD_ID, false);
     }
 
     @Test
     void findCurrentByColdRoom_returnsMappedMostRecentReading() {
-        when(repository.findCurrentByColdRoomId(3L)).thenReturn(List.<Object[]>of(row(10, 7, 3, null)));
+        when(repository.existsColdRoomByIdAndCd(3L, CD_ID, false)).thenReturn(true);
+        when(repository.findCurrentByColdRoomIdAndCd(3L, CD_ID, false))
+                .thenReturn(List.<Object[]>of(row(10, 7, 3, null)));
 
-        Optional<TemperatureReadingView> result = service.findCurrentByColdRoom(3L);
+        Optional<TemperatureReadingView> result = service.findCurrentByColdRoom(
+                3L, CD_ID, NivelAcesso.OPERADOR);
 
         assertEquals(10L, result.orElseThrow().readingId());
         assertEquals(3L, result.orElseThrow().coldRoomId());
         assertEquals(null, result.orElseThrow().alertId());
         assertEquals(MEASURED_AT, result.orElseThrow().measuredAt());
+        verify(repository).findCurrentByColdRoomIdAndCd(3L, CD_ID, false);
     }
 
     @Test
     void findCurrentByColdRoom_returnsEmptyWhenRepositoryHasNoReading() {
-        when(repository.findCurrentByColdRoomId(3L)).thenReturn(List.of());
+        when(repository.existsColdRoomByIdAndCd(3L, CD_ID, false)).thenReturn(true);
+        when(repository.findCurrentByColdRoomIdAndCd(3L, CD_ID, false)).thenReturn(List.of());
 
-        assertEquals(Optional.empty(), service.findCurrentByColdRoom(3L));
+        assertEquals(Optional.empty(), service.findCurrentByColdRoom(3L, CD_ID, NivelAcesso.OPERADOR));
     }
 
     @Test
     void findHistoryByColdRoom_forwardsPeriodToRepositoryAndMapsRows() {
         LocalDateTime from = LocalDateTime.of(2026, 10, 1, 0, 0);
         LocalDateTime to = LocalDateTime.of(2026, 10, 4, 23, 59);
-        when(repository.findHistoryByColdRoomId(3L, from, to))
+        when(repository.existsColdRoomByIdAndCd(3L, CD_ID, false)).thenReturn(true);
+        when(repository.findHistoryByColdRoomIdAndCd(3L, CD_ID, false, from, to))
                 .thenReturn(List.<Object[]>of(row(10, 7, 3, 5)));
 
-        List<TemperatureReadingView> result = service.findHistoryByColdRoom(3L, from, to);
+        List<TemperatureReadingView> result = service.findHistoryByColdRoom(
+                3L, CD_ID, NivelAcesso.OPERADOR, from, to);
 
         assertEquals(1, result.size());
         assertEquals(10L, result.get(0).readingId());
         assertEquals(MEASURED_AT, result.get(0).measuredAt());
-        verify(repository).findHistoryByColdRoomId(3L, from, to);
+        verify(repository).findHistoryByColdRoomIdAndCd(3L, CD_ID, false, from, to);
     }
 
     @Test
     void findAll_mapsTimestampRepositoryValue() {
         Object[] row = row(10, 7, 3, 5);
         row[5] = Timestamp.valueOf(MEASURED_AT);
-        when(repository.findAllWithColdRoom()).thenReturn(List.<Object[]>of(row));
+        when(repository.findAllWithColdRoomByCd(CD_ID, false)).thenReturn(List.<Object[]>of(row));
 
-        assertEquals(MEASURED_AT, service.findAll().get(0).measuredAt());
+        assertEquals(MEASURED_AT, service.findAll(CD_ID, NivelAcesso.OPERADOR).get(0).measuredAt());
+    }
+
+    @Test
+    void getMethods_rejectUsersWithoutCd() {
+        assertThrows(AccessDeniedException.class, () -> service.findAll(null, NivelAcesso.OPERADOR));
+        assertThrows(AccessDeniedException.class,
+                () -> service.findCurrentByColdRoom(3L, null, NivelAcesso.OPERADOR));
+        assertThrows(AccessDeniedException.class,
+                () -> service.findHistoryByColdRoom(3L, null, NivelAcesso.OPERADOR, null, null));
+        org.mockito.Mockito.verifyNoInteractions(repository);
+    }
+
+    @Test
+    void findCurrentByColdRoom_throwsNotFoundWhenColdRoomIsOutsideUsersCd() {
+        when(repository.existsColdRoomByIdAndCd(3L, CD_ID, false)).thenReturn(false);
+
+        assertThrows(ColdRoomNotFoundException.class,
+                () -> service.findCurrentByColdRoom(3L, CD_ID, NivelAcesso.OPERADOR));
+        verify(repository, never()).findCurrentByColdRoomIdAndCd(3L, CD_ID, false);
+    }
+
+    @Test
+    void findHistoryByColdRoom_throwsNotFoundWhenColdRoomIsOutsideUsersCd() {
+        when(repository.existsColdRoomByIdAndCd(3L, CD_ID, false)).thenReturn(false);
+
+        assertThrows(ColdRoomNotFoundException.class,
+                () -> service.findHistoryByColdRoom(3L, CD_ID, NivelAcesso.OPERADOR, null, null));
+        verify(repository, never()).findHistoryByColdRoomIdAndCd(3L, CD_ID, false, null, null);
+    }
+
+    @Test
+    void superAdminCanReadAcrossCdsWithoutCdAssignment() {
+        when(repository.existsColdRoomByIdAndCd(3L, null, true)).thenReturn(true);
+        when(repository.findAllWithColdRoomByCd(null, true))
+                .thenReturn(List.<Object[]>of(row(10, 7, 3, 5)));
+        when(repository.findCurrentByColdRoomIdAndCd(3L, null, true))
+                .thenReturn(List.<Object[]>of(row(10, 7, 3, null)));
+        when(repository.findHistoryByColdRoomIdAndCd(3L, null, true, null, null))
+                .thenReturn(List.<Object[]>of(row(10, 7, 3, 5)));
+
+        assertEquals(1, service.findAll(null, NivelAcesso.SUPER_ADMIN).size());
+        assertEquals(10L, service.findCurrentByColdRoom(3L, null, NivelAcesso.SUPER_ADMIN)
+                .orElseThrow().readingId());
+        assertEquals(1, service.findHistoryByColdRoom(3L, null, NivelAcesso.SUPER_ADMIN, null, null).size());
+
+        verify(repository).findAllWithColdRoomByCd(null, true);
+        verify(repository).findCurrentByColdRoomIdAndCd(3L, null, true);
+        verify(repository).findHistoryByColdRoomIdAndCd(3L, null, true, null, null);
     }
 
     private TemperatureReadingRequest request() {
