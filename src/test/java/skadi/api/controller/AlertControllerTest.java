@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.core.MethodParameter;
@@ -19,6 +18,7 @@ import skadi.api.dto.AlertResponse;
 import skadi.api.enums.AlertStatus;
 import skadi.api.enums.CurrentLevel;
 import skadi.api.enums.SeverityLevel;
+import skadi.api.exceptions.AlertNotFoundException;
 import skadi.api.service.AlertService;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.model.User;
@@ -29,13 +29,9 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doNothing;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -123,20 +119,12 @@ class AlertControllerTest {
     }
 
     @Test
-    void update_doesNotReceiveLevelOrSeverityInRequest() throws Exception {
-        when(service.update(eq(1), any())).thenReturn(alert(AlertStatus.ATIVO));
+    void findById_returnsNotFoundWhenAlertDoesNotExist() throws Exception {
+        when(service.findById(99)).thenThrow(new AlertNotFoundException(99));
 
-        mockMvc.perform(put("/alerts/1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "coldRoomId": 3,
-                                  "referenceShelfLifeHours": 24.00,
-                                  "type": "temperatura_fora_padrao"
-                                }
-                                """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("ATIVO"));
+        mockMvc.perform(get("/alerts/99"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("Alerta não encontrado: 99"));
     }
 
     @Test
@@ -149,27 +137,6 @@ class AlertControllerTest {
         mockMvc.perform(patch("/alerts/1/recognize")
                 )
                 .andExpect(status().isNoContent());
-    }
-
-    @Test
-    void delete_returnsNoContent() throws Exception {
-        doNothing().when(service).delete(1);
-
-        mockMvc.perform(delete("/alerts/1"))
-                .andExpect(status().isNoContent());
-    }
-
-    @Test
-    void update_returnsBadRequestWhenRequiredFieldIsMissing() throws Exception {
-        mockMvc.perform(put("/alerts/1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "referenceShelfLifeHours": 24.00,
-                                  "type": "temperatura_fora_padrao"
-                                }
-                                """))
-                .andExpect(status().isBadRequest());
     }
 
     private AlertResponse alert(AlertStatus status) {
