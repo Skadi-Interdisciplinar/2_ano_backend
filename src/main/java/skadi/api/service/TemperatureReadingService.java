@@ -7,10 +7,14 @@ import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.StreamRecords;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import skadi.api.dto.TemperatureReadingRequest;
 import skadi.api.dto.TemperatureReadingResponse;
 import skadi.api.dto.TemperatureReadingView;
+import skadi.api.exceptions.ColdRoomNotFoundException;
+import skadi.api.exceptions.TemperatureReadingNotFoundException;
+import skadi.api.enums.NivelAcesso;
 import skadi.api.repository.TemperatureReadingRepository;
 
 import java.time.OffsetDateTime;
@@ -72,24 +76,41 @@ public class TemperatureReadingService {
         );
     }
 
-    public List<TemperatureReadingView> findAll() {
-        return repository.findAllWithColdRoom().stream()
+    public List<TemperatureReadingView> findAll(Integer cdId, NivelAcesso accessLevel) {
+        boolean allCds = hasGlobalReadAccess(cdId, accessLevel);
+        return repository.findAllWithColdRoomByCd(cdId, allCds).stream()
                 .map(this::toView)
                 .toList();
     }
 
-    public Optional<TemperatureReadingView> findCurrentByColdRoom(Long coldRoomId) {
-        return repository.findCurrentByColdRoomId(coldRoomId).stream()
+    public TemperatureReadingView findById(Integer readingId, Integer cdId, NivelAcesso accessLevel) {
+        boolean allCds = hasGlobalReadAccess(cdId, accessLevel);
+        return repository.findByReadingIdAndCd(readingId, cdId, allCds).stream()
+                .findFirst()
+                .map(this::toView)
+                .orElseThrow(() -> new TemperatureReadingNotFoundException(readingId));
+    }
+
+    public Optional<TemperatureReadingView> findCurrentByColdRoom(
+            Long coldRoomId,
+            Integer cdId,
+            NivelAcesso accessLevel
+    ) {
+        boolean allCds = validateColdRoomAccess(coldRoomId, cdId, accessLevel);
+        return repository.findCurrentByColdRoomIdAndCd(coldRoomId, cdId, allCds).stream()
                 .findFirst()
                 .map(this::toView);
     }
 
     public List<TemperatureReadingView> findHistoryByColdRoom(
             Long coldRoomId,
+            Integer cdId,
+            NivelAcesso accessLevel,
             LocalDateTime from,
             LocalDateTime to
     ) {
-        return repository.findHistoryByColdRoomId(coldRoomId, from, to).stream()
+        boolean allCds = validateColdRoomAccess(coldRoomId, cdId, accessLevel);
+        return repository.findHistoryByColdRoomIdAndCd(coldRoomId, cdId, allCds, from, to).stream()
                 .map(this::toView)
                 .toList();
     }
@@ -101,9 +122,37 @@ public class TemperatureReadingService {
                 ((Number) row[2]).longValue(),
                 row[3] == null ? null : ((Number) row[3]).longValue(),
                 (java.math.BigDecimal) row[4],
-                ((Timestamp) row[5]).toLocalDateTime(),
+                toLocalDateTime(row[5]),
                 (String) row[6]
         );
+    }
+
+    private LocalDateTime toLocalDateTime(Object value) {
+        if (value instanceof LocalDateTime localDateTime) {
+            return localDateTime;
+        }
+        if (value instanceof Timestamp timestamp) {
+            return timestamp.toLocalDateTime();
+        }
+        throw new IllegalArgumentException("Tipo de data/hora não suportado: " + value);
+    }
+
+    private boolean hasGlobalReadAccess(Integer cdId, NivelAcesso accessLevel) {
+        if (accessLevel == NivelAcesso.SUPER_ADMIN) {
+            return true;
+        }
+        if (cdId == null) {
+            throw new AccessDeniedException("Usuário não está vinculado a um CD.");
+        }
+        return false;
+    }
+
+    private boolean validateColdRoomAccess(Long coldRoomId, Integer cdId, NivelAcesso accessLevel) {
+        boolean allCds = hasGlobalReadAccess(cdId, accessLevel);
+        if (!repository.existsColdRoomByIdAndCd(coldRoomId, cdId, allCds)) {
+            throw new ColdRoomNotFoundException(coldRoomId);
+        }
+        return allCds;
     }
 
     private String eventIdFor(TemperatureReadingRequest request) {
