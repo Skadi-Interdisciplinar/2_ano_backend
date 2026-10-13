@@ -11,8 +11,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.dao.DataIntegrityViolationException;
 import skadi.api.dto.ErrorResponse;
+import skadi.api.exceptions.AlertHandlingNotFoundException;
+import skadi.api.exceptions.AlertNotFoundException;
 import skadi.api.exceptions.ReportNotFoundException;
 import skadi.api.exceptions.ReportRuleViolationException;
+import skadi.api.exceptions.JustificationAlreadyExistsException;
+import skadi.api.exceptions.JustificationNotFoundException;
+import skadi.api.exceptions.JustificationRuleViolationException;
 import skadi.api.exceptions.SignatureAlreadyExistsException;
 import skadi.api.exceptions.SignatureNotFoundException;
 import skadi.api.exceptions.CategoryAlreadyExistsException;
@@ -24,14 +29,17 @@ import java.time.Instant;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler({ReportNotFoundException.class, SignatureNotFoundException.class, CategoryNotFoundException.class})
+    @ExceptionHandler({ReportNotFoundException.class, SignatureNotFoundException.class,
+            CategoryNotFoundException.class, JustificationNotFoundException.class,
+            AlertNotFoundException.class, AlertHandlingNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleResourcesNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage(), Timestamp.from(Instant.now())));
     }
 
-    @ExceptionHandler(ReportRuleViolationException.class)
-    public ResponseEntity<ErrorResponse> handleReportRuleViolation(ReportRuleViolationException ex) {
+    @ExceptionHandler({ReportRuleViolationException.class, JustificationRuleViolationException.class,
+            JustificationAlreadyExistsException.class})
+    public ResponseEntity<ErrorResponse> handleRuleViolation(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ex.getMessage(), Timestamp.from(Instant.now())));
     }

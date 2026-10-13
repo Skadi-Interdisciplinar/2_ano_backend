@@ -4,8 +4,8 @@ import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import skadi.api.dto.AlertResponse;
-import skadi.api.dto.AlertUpdateRequest;
 import skadi.api.enums.AlertStatus;
+import skadi.api.exceptions.AlertNotFoundException;
 import skadi.api.model.Alert;
 import skadi.api.repository.AlertRepository;
 
@@ -36,7 +36,7 @@ public class AlertService {
     public AlertResponse findById(Integer id) {
         return repository.findById(id)
                 .map(this::toResponse)
-                .orElseThrow(() -> new IllegalArgumentException("Alert not found: " + id));
+                .orElseThrow(() -> new AlertNotFoundException(id));
     }
 
     public List<AlertResponse> findHistory() {
@@ -54,29 +54,17 @@ public class AlertService {
                 .toList();
     }
 
+    @Transactional
     public void recognize(Integer alertId, Integer userId) {
+        entityManager.createNativeQuery(
+                        "SELECT set_config('app.usuario_atual', :userId, true)")
+                .setParameter("userId", userId.toString())
+                .getSingleResult();
+
         entityManager.createNativeQuery("CALL sp_reconhecer_alerta(:alertId, :userId)")
                 .setParameter("alertId", alertId)
                 .setParameter("userId", userId)
                 .executeUpdate();
-    }
-
-    @Transactional
-    public AlertResponse update(Integer id, AlertUpdateRequest request) {
-        Alert alert = repository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Alert not found: " + id));
-        alert.setColdRoomId(request.coldRoomId());
-        alert.setReferenceShelfLifeHours(request.referenceShelfLifeHours());
-        alert.setType(request.type());
-        return toResponse(repository.save(alert));
-    }
-
-    @Transactional
-    public void delete(Integer id) {
-        if (!repository.existsById(id)) {
-            throw new IllegalArgumentException("Alert not found: " + id);
-        }
-        repository.deleteById(id);
     }
 
     private AlertResponse toResponse(Alert alert) {

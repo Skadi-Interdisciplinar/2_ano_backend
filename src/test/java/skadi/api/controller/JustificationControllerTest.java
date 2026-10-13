@@ -5,25 +5,33 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.method.support.ModelAndViewContainer;
 import skadi.api.config.GlobalExceptionHandler;
 import skadi.api.dto.JustificationRequest;
+import skadi.api.dto.JustificationPatchRequest;
 import skadi.api.dto.JustificationResponse;
+import skadi.api.enums.NivelAcesso;
+import skadi.api.exceptions.JustificationAlreadyExistsException;
+import skadi.api.exceptions.JustificationNotFoundException;
+import skadi.api.exceptions.JustificationRuleViolationException;
+import skadi.api.model.User;
 import skadi.api.service.JustificationService;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -36,34 +44,50 @@ class JustificationControllerTest {
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(new JustificationController(service))
                 .setControllerAdvice(new GlobalExceptionHandler())
+                .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
+                    @Override
+                    public boolean supportsParameter(MethodParameter parameter) {
+                        return parameter.hasParameterAnnotation(AuthenticationPrincipal.class);
+                    }
+
+                    @Override
+                    public Object resolveArgument(
+                            MethodParameter parameter,
+                            ModelAndViewContainer mavContainer,
+                            NativeWebRequest webRequest,
+                            org.springframework.web.bind.support.WebDataBinderFactory binderFactory) {
+                        return new User(7L, "Test User", "test-user", "12345678901",
+                                "test@example.com", "password", NivelAcesso.ADMIN, 1, null);
+                    }
+                })
                 .build();
     }
 
     @Test
-    void findByAlertHandlingId_returnsJustifications() throws Exception {
-        when(service.findByAlertHandlingId(5)).thenReturn(List.of(justification()));
+    void findByAlertHandlingId_returnsJustification() throws Exception {
+        when(service.findByAlertHandlingId(5)).thenReturn(justification());
 
-        mockMvc.perform(get("/alert-handlings/5/justifications"))
+        mockMvc.perform(get("/alert-handlings/5/justification"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(20))
-                .andExpect(jsonPath("$[0].alertHandlingId").value(5))
-                .andExpect(jsonPath("$[0].reason").value("Power failure"));
+                .andExpect(jsonPath("$.id").value(20))
+                .andExpect(jsonPath("$.alertHandlingId").value(5))
+                .andExpect(jsonPath("$.reason").value("Power failure"));
     }
 
     @Test
-    void findByAlertHandlingId_returnsEmptyListWhenNoneExist() throws Exception {
-        when(service.findByAlertHandlingId(5)).thenReturn(List.of());
+    void findByAlertHandlingId_returnsNotFoundWhenNoneExists() throws Exception {
+        when(service.findByAlertHandlingId(5)).thenThrow(new JustificationNotFoundException(5));
 
-        mockMvc.perform(get("/alert-handlings/5/justifications"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").isEmpty());
+        mockMvc.perform(get("/alert-handlings/5/justification"))
+                .andExpect(status().isNotFound());
     }
 
     @Test
     void create_returnsCreatedJustification() throws Exception {
-        when(service.create(eq(5), any(JustificationRequest.class))).thenReturn(justification());
+        when(service.create(eq(5), any(JustificationRequest.class), eq(7)))
+                .thenReturn(justification());
 
-        mockMvc.perform(post("/alert-handlings/5/justifications")
+        mockMvc.perform(post("/alert-handlings/5/justification")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "reason": "Power failure", "description": "Temporary outage" }
@@ -75,8 +99,21 @@ class JustificationControllerTest {
     }
 
     @Test
+    void create_returnsConflictWhenHandlingAlreadyHasJustification() throws Exception {
+        when(service.create(eq(5), any(JustificationRequest.class), eq(7)))
+                .thenThrow(new JustificationAlreadyExistsException(5));
+
+        mockMvc.perform(post("/alert-handlings/5/justification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "reason": "Motivo", "description": "Descrição" }
+                                """))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
     void create_returnsBadRequestWhenReasonIsBlank() throws Exception {
-        mockMvc.perform(post("/alert-handlings/5/justifications")
+        mockMvc.perform(post("/alert-handlings/5/justification")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "reason": "  ", "description": "Temporary outage" }
@@ -86,7 +123,7 @@ class JustificationControllerTest {
 
     @Test
     void create_returnsBadRequestWhenDescriptionIsBlank() throws Exception {
-        mockMvc.perform(post("/alert-handlings/5/justifications")
+        mockMvc.perform(post("/alert-handlings/5/justification")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "reason": "Power failure", "description": " " }
@@ -100,38 +137,20 @@ class JustificationControllerTest {
         String body = "{\"reason\":\"" + tooLongReason
                 + "\",\"description\":\"Temporary outage\"}";
 
-        mockMvc.perform(post("/alert-handlings/5/justifications")
+        mockMvc.perform(post("/alert-handlings/5/justification")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void findById_returnsJustificationForHandling() throws Exception {
-        when(service.findById(5, 20)).thenReturn(justification());
-
-        mockMvc.perform(get("/alert-handlings/5/justifications/20"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(20))
-                .andExpect(jsonPath("$.alertHandlingId").value(5));
-    }
-
-    @Test
-    void findById_returnsInternalServerErrorWhenNotFoundForHandling() throws Exception {
-        when(service.findById(5, 99)).thenThrow(
-                new IllegalArgumentException("Justification not found for alert handling: 5"));
-
-        mockMvc.perform(get("/alert-handlings/5/justifications/99"))
-                .andExpect(status().isInternalServerError());
-    }
-
-    @Test
     void update_changesJustification() throws Exception {
         JustificationResponse updated = new JustificationResponse(20, 5,
                 "New reason", "New description", justification().createdAt());
-        when(service.update(eq(5), eq(20), any(JustificationRequest.class))).thenReturn(updated);
+        when(service.update(eq(5), any(JustificationPatchRequest.class), eq(7)))
+                .thenReturn(updated);
 
-        mockMvc.perform(put("/alert-handlings/5/justifications/20")
+        mockMvc.perform(patch("/alert-handlings/5/justification")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "reason": "New reason", "description": "New description" }
@@ -142,44 +161,53 @@ class JustificationControllerTest {
     }
 
     @Test
-    void update_returnsBadRequestWhenRequiredFieldIsMissing() throws Exception {
-        mockMvc.perform(put("/alert-handlings/5/justifications/20")
+    void update_acceptsPartialRequest() throws Exception {
+        when(service.update(eq(5), any(JustificationPatchRequest.class), eq(7)))
+                .thenReturn(new JustificationResponse(20, 5,
+                        "New reason", "Existing description", justification().createdAt()));
+
+        mockMvc.perform(patch("/alert-handlings/5/justification")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                { "reason": "Reason only" }
+                                { "reason": "New reason" }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reason").value("New reason"))
+                .andExpect(jsonPath("$.description").value("Existing description"));
+    }
+
+    @Test
+    void update_returnsConflictWhenNoFieldsAreProvided() throws Exception {
+        when(service.update(eq(5), any(JustificationPatchRequest.class), eq(7)))
+                .thenThrow(new JustificationRuleViolationException("Informe ao menos um campo para atualizar."));
+
+        mockMvc.perform(patch("/alert-handlings/5/justification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isConflict());
+    }
+
+    @Test
+    void update_returnsBadRequestWhenProvidedFieldIsBlank() throws Exception {
+        mockMvc.perform(patch("/alert-handlings/5/justification")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "description": " " }
                                 """))
                 .andExpect(status().isBadRequest());
     }
 
     @Test
-    void update_returnsInternalServerErrorWhenNotFoundForHandling() throws Exception {
-        when(service.update(eq(5), eq(99), any(JustificationRequest.class)))
-                .thenThrow(new IllegalArgumentException("Justification not found for alert handling: 5"));
+    void update_returnsNotFoundWhenHandlingHasNoJustification() throws Exception {
+        when(service.update(eq(5), any(JustificationPatchRequest.class), eq(7)))
+                .thenThrow(new JustificationNotFoundException(5));
 
-        mockMvc.perform(put("/alert-handlings/5/justifications/99")
+        mockMvc.perform(patch("/alert-handlings/5/justification")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "reason": "Reason", "description": "Description" }
                                 """))
-                .andExpect(status().isInternalServerError());
-    }
-
-    @Test
-    void delete_returnsNoContent() throws Exception {
-        doNothing().when(service).delete(5, 20);
-
-        mockMvc.perform(delete("/alert-handlings/5/justifications/20"))
-                .andExpect(status().isNoContent());
-    }
-
-    @Test
-    void delete_returnsInternalServerErrorWhenNotFoundForHandling() throws Exception {
-        org.mockito.Mockito.doThrow(
-                        new IllegalArgumentException("Justification not found for alert handling: 5"))
-                .when(service).delete(5, 99);
-
-        mockMvc.perform(delete("/alert-handlings/5/justifications/99"))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isNotFound());
     }
 
     private JustificationResponse justification() {

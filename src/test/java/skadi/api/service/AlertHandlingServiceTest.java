@@ -6,8 +6,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import skadi.api.dto.AlertHandlingResponse;
-import skadi.api.dto.AlertHandlingUpdateRequest;
 import skadi.api.enums.AlertHandlingStatus;
+import skadi.api.exceptions.AlertHandlingNotFoundException;
 import skadi.api.model.AlertHandling;
 import skadi.api.repository.AlertHandlingRepository;
 
@@ -31,107 +31,52 @@ class AlertHandlingServiceTest {
     }
 
     @Test
-    void findByAlertId_returnsMappedHandlings() {
+    void findAll_returnsMappedHandlings() {
         AlertHandling handling = handling(10, AlertHandlingStatus.PENDENTE);
-        when(repository.findByAlertIdOrderByIdDesc(3)).thenReturn(List.of(handling));
+        when(repository.findAllByOrderByIdDesc()).thenReturn(List.of(handling));
 
-        List<AlertHandlingResponse> result = service.findByAlertId(3);
+        List<AlertHandlingResponse> result = service.findAll();
 
         assertEquals(1, result.size());
         assertResponse(result.get(0), handling);
-        verify(repository).findByAlertIdOrderByIdDesc(3);
+        verify(repository).findAllByOrderByIdDesc();
     }
 
     @Test
-    void findByAlertId_returnsEmptyListWhenAlertHasNoHandlings() {
-        when(repository.findByAlertIdOrderByIdDesc(3)).thenReturn(List.of());
+    void findByAlertId_returnsSingleHandling() {
+        AlertHandling handling = handling(10, AlertHandlingStatus.PENDENTE);
+        when(repository.findFirstByAlertIdOrderByIdDesc(3)).thenReturn(Optional.of(handling));
 
-        List<AlertHandlingResponse> result = service.findByAlertId(3);
+        AlertHandlingResponse result = service.findByAlertId(3);
 
-        assertEquals(List.of(), result);
-        verify(repository).findByAlertIdOrderByIdDesc(3);
+        assertResponse(result, handling);
+        verify(repository).findFirstByAlertIdOrderByIdDesc(3);
+    }
+
+    @Test
+    void findByAlertId_throwsWhenNoHandlingExists() {
+        when(repository.findFirstByAlertIdOrderByIdDesc(3)).thenReturn(Optional.empty());
+
+        assertThrows(AlertHandlingNotFoundException.class, () -> service.findByAlertId(3));
     }
 
     @Test
     void findById_returnsMappedHandling() {
         AlertHandling handling = handling(10, AlertHandlingStatus.EM_ANDAMENTO);
-        when(repository.findByIdAndAlertId(10, 3)).thenReturn(Optional.of(handling));
+        when(repository.findById(10)).thenReturn(Optional.of(handling));
 
-        AlertHandlingResponse result = service.findById(3, 10);
+        AlertHandlingResponse result = service.findById(10);
 
         assertResponse(result, handling);
-        verify(repository).findByIdAndAlertId(10, 3);
+        verify(repository).findById(10);
     }
 
     @Test
     void findById_throwsWhenHandlingDoesNotExist() {
-        when(repository.findByIdAndAlertId(99, 3)).thenReturn(Optional.empty());
+        when(repository.findById(99)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> service.findById(3, 99));
-        verify(repository).findByIdAndAlertId(99, 3);
-    }
-
-    @Test
-    void update_changesStatusAndReturnsUpdatedHandling() {
-        AlertHandling handling = handling(10, AlertHandlingStatus.PENDENTE);
-        when(repository.findByIdAndAlertId(10, 3)).thenReturn(Optional.of(handling));
-        when(repository.save(handling)).thenReturn(handling);
-
-        AlertHandlingResponse result = service.update(3, 10,
-                new AlertHandlingUpdateRequest(AlertHandlingStatus.EM_ANDAMENTO));
-
-        assertEquals(AlertHandlingStatus.EM_ANDAMENTO, handling.getStatus());
-        assertEquals(AlertHandlingStatus.EM_ANDAMENTO, result.status());
-        verify(repository).save(handling);
-    }
-
-    @Test
-    void update_throwsWhenHandlingDoesNotExist() {
-        when(repository.findByIdAndAlertId(99, 3)).thenReturn(Optional.empty());
-
-        assertThrows(IllegalArgumentException.class, () -> service.update(3, 99,
-                new AlertHandlingUpdateRequest(AlertHandlingStatus.EM_ANDAMENTO)));
-    }
-
-    @Test
-    void delete_removesExistingHandling() {
-        AlertHandling handling = handling(10, AlertHandlingStatus.PENDENTE);
-        when(repository.findByIdAndAlertId(10, 3)).thenReturn(Optional.of(handling));
-
-        service.delete(3, 10);
-
-        verify(repository).findByIdAndAlertId(10, 3);
-        verify(repository).delete(handling);
-    }
-
-    @Test
-    void delete_throwsWhenHandlingDoesNotExist() {
-        when(repository.findByIdAndAlertId(99, 3)).thenReturn(Optional.empty());
-
-        assertThrows(IllegalArgumentException.class, () -> service.delete(3, 99));
-        verify(repository).findByIdAndAlertId(99, 3);
-    }
-
-    @Test
-    void findById_throwsWhenHandlingBelongsToAnotherAlert() {
-        when(repository.findByIdAndAlertId(10, 4)).thenReturn(Optional.empty());
-
-        assertThrows(IllegalArgumentException.class, () -> service.findById(4, 10));
-    }
-
-    @Test
-    void update_throwsWhenHandlingBelongsToAnotherAlert() {
-        when(repository.findByIdAndAlertId(10, 4)).thenReturn(Optional.empty());
-
-        assertThrows(IllegalArgumentException.class, () -> service.update(4, 10,
-                new AlertHandlingUpdateRequest(AlertHandlingStatus.EM_ANDAMENTO)));
-    }
-
-    @Test
-    void delete_throwsWhenHandlingBelongsToAnotherAlert() {
-        when(repository.findByIdAndAlertId(10, 4)).thenReturn(Optional.empty());
-
-        assertThrows(IllegalArgumentException.class, () -> service.delete(4, 10));
+        assertThrows(AlertHandlingNotFoundException.class, () -> service.findById(99));
+        verify(repository).findById(99);
     }
 
     private AlertHandling handling(Integer id, AlertHandlingStatus status) {

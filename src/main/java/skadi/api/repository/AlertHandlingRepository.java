@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Optional;
 
 public interface AlertHandlingRepository extends JpaRepository<AlertHandling, Integer> {
-    List<AlertHandling> findByAlertIdOrderByIdDesc(Integer alertId);
+    List<AlertHandling> findAllByOrderByIdDesc();
     Optional<AlertHandling> findFirstByAlertIdOrderByIdDesc(Integer alertId);
-    Optional<AlertHandling> findByIdAndAlertId(Integer id, Integer alertId);
 }

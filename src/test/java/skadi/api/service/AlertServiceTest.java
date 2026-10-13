@@ -8,10 +8,10 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import skadi.api.dto.AlertResponse;
-import skadi.api.dto.AlertUpdateRequest;
 import skadi.api.enums.AlertStatus;
 import skadi.api.enums.CurrentLevel;
 import skadi.api.enums.SeverityLevel;
+import skadi.api.exceptions.AlertNotFoundException;
 import skadi.api.model.Alert;
 import skadi.api.repository.AlertRepository;
 
@@ -82,6 +82,11 @@ class AlertServiceTest {
 
     @Test
     void recognize_callsDatabaseProcedure() {
+        when(entityManager.createNativeQuery(
+                "SELECT set_config('app.usuario_atual', :userId, true)"))
+                .thenReturn(query);
+        when(query.setParameter("userId", "7")).thenReturn(query);
+        when(query.getSingleResult()).thenReturn("7");
         when(entityManager.createNativeQuery("CALL sp_reconhecer_alerta(:alertId, :userId)"))
                 .thenReturn(query);
         when(query.setParameter("alertId", 1)).thenReturn(query);
@@ -89,57 +94,17 @@ class AlertServiceTest {
 
         service.recognize(1, 7);
 
+        verify(entityManager).createNativeQuery(
+                "SELECT set_config('app.usuario_atual', :userId, true)");
+        verify(query).setParameter("userId", "7");
         verify(query).executeUpdate();
-    }
-
-    @Test
-    void update_keepsLevelSeverityAndStatusControlledByDatabase() {
-        Alert current = alert(AlertStatus.ATIVO);
-        when(repository.findById(1)).thenReturn(Optional.of(current));
-        when(repository.save(current)).thenReturn(current);
-
-        AlertUpdateRequest request = new AlertUpdateRequest(
-                4, new BigDecimal("24.00"), "temperatura_fora_padrao");
-
-        AlertResponse result = service.update(1, request);
-
-        assertEquals(AlertStatus.ATIVO, result.status());
-        assertEquals(4, current.getColdRoomId());
-        assertEquals(CurrentLevel.OPERADOR, result.currentLevel());
-        assertEquals(SeverityLevel.BAIXA, result.severityLevel());
-        verify(repository).save(current);
     }
 
     @Test
     void findById_throwsWhenAlertDoesNotExist() {
         when(repository.findById(99)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> service.findById(99));
-    }
-
-    @Test
-    void update_throwsWhenAlertDoesNotExist() {
-        when(repository.findById(99)).thenReturn(Optional.empty());
-        AlertUpdateRequest request = new AlertUpdateRequest(
-                3, new BigDecimal("24.00"), "temperatura_fora_padrao");
-
-        assertThrows(IllegalArgumentException.class, () -> service.update(99, request));
-    }
-
-    @Test
-    void delete_removesExistingAlert() {
-        when(repository.existsById(1)).thenReturn(true);
-
-        service.delete(1);
-
-        verify(repository).deleteById(1);
-    }
-
-    @Test
-    void delete_throwsWhenAlertDoesNotExist() {
-        when(repository.existsById(99)).thenReturn(false);
-
-        assertThrows(IllegalArgumentException.class, () -> service.delete(99));
+        assertThrows(AlertNotFoundException.class, () -> service.findById(99));
     }
 
     private Alert alert(AlertStatus status) {

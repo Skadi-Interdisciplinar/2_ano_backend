@@ -4,8 +4,9 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 public record JustificationRequest(
-        @NotBlank
-        @Size(max = 255, message = "reason must contain at most 255 characters")
+        @NotBlank(message = "O motivo é obrigatório.")
+        @Size(max = 255, message = "O motivo deve ter no máximo 255 caracteres.")
         String reason,
-        @NotBlank String description
+        @NotBlank(message = "A descrição é obrigatória.")
+        String description
 ) {}
