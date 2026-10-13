@@ -22,6 +22,9 @@ import skadi.api.exceptions.BatchAlreadyExistsException;
 import skadi.api.exceptions.BatchInvalidDatesException;
 import skadi.api.exceptions.BatchNotFoundException;
 import skadi.api.exceptions.BatchRuleViolationException;
+import skadi.api.exceptions.ColdRoomNotFoundException;
+import skadi.api.exceptions.TemperatureReadingNotFoundException;
+import skadi.api.exceptions.CurrentTemperatureNotFoundException;
 import skadi.api.exceptions.UserAlreadyExistsException;
 
 import java.sql.Timestamp;
@@ -30,11 +33,13 @@ import java.time.Instant;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
     @ExceptionHandler({
-            ReportNotFoundException.class,
-            SignatureNotFoundException.class,
-            CategoryNotFoundException.class,
-            BatchNotFoundException.class
-    })
+      ReportNotFoundException.class,
+      SignatureNotFoundException.class,
+      CategoryNotFoundException.class,
+      BatchNotFoundException.class, 
+      TemperatureReadingNotFoundException.class, 
+      CurrentTemperatureNotFoundException.class,
+      ColdRoomNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleResourcesNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage(), Timestamp.from(Instant.now())));
