@@ -10,6 +10,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import skadi.api.dto.ErrorResponse;
 import skadi.api.exceptions.CdNotFoundException;
+import skadi.api.exceptions.SignatureAlreadyExistsException;
 import skadi.api.exceptions.UserAlreadyExistsException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -19,14 +20,25 @@ class ExceptionHandlerTest {
     private final GlobalExceptionHandler exceptionHandler = new GlobalExceptionHandler();
 
     @Test
-    void handleUserAlreadyExists_returns409() {
-        ResponseEntity<ErrorResponse> response = exceptionHandler.handleUserAlreadyExists(
+    void handleAlreadyExists_user_returns409() {
+        ResponseEntity<ErrorResponse> response = exceptionHandler.handleAlreadyExists(
                 new UserAlreadyExistsException()
         );
 
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
         assertEquals(409, response.getBody().statusCode());
         assertEquals("Nome de usuário já utilizado", response.getBody().message());
+    }
+
+    @Test
+    void handleAlreadyExists_signature_returns409() {
+        ResponseEntity<ErrorResponse> response = exceptionHandler.handleAlreadyExists(
+                new SignatureAlreadyExistsException(1)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals(409, response.getBody().statusCode());
+        assertEquals("O relatório 1 já possui uma assinatura.", response.getBody().message());
     }
 
     @Test

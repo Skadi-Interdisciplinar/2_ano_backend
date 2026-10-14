@@ -9,8 +9,28 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import skadi.api.dto.ErrorResponse;
 import skadi.api.exceptions.CdNotFoundException;
+import skadi.api.exceptions.AlertHandlingNotFoundException;
+import skadi.api.exceptions.AlertNotFoundException;
+import skadi.api.exceptions.ReportNotFoundException;
+import skadi.api.exceptions.ReportRuleViolationException;
+import skadi.api.exceptions.JustificationAlreadyExistsException;
+import skadi.api.exceptions.JustificationNotFoundException;
+import skadi.api.exceptions.JustificationRuleViolationException;
+import skadi.api.exceptions.SignatureAlreadyExistsException;
+import skadi.api.exceptions.SignatureNotFoundException;
+import skadi.api.exceptions.CategoryAlreadyExistsException;
+import skadi.api.exceptions.CategoryNotFoundException;
+import skadi.api.exceptions.BatchAlreadyExistsException;
+import skadi.api.exceptions.BatchInvalidDatesException;
+import skadi.api.exceptions.BatchNotFoundException;
+import skadi.api.exceptions.BatchRuleViolationException;
+import skadi.api.exceptions.ColdRoomNotFoundException;
+import skadi.api.exceptions.TemperatureReadingNotFoundException;
+import skadi.api.exceptions.CurrentTemperatureNotFoundException;
 import skadi.api.exceptions.UserAlreadyExistsException;
 
 import java.sql.Timestamp;
@@ -18,10 +38,54 @@ import java.time.Instant;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler
-    public ResponseEntity<ErrorResponse> handleUserAlreadyExists(UserAlreadyExistsException ex) {
+    @ExceptionHandler({
+        ReportNotFoundException.class,
+        SignatureNotFoundException.class,
+        CategoryNotFoundException.class,
+        BatchNotFoundException.class, 
+        TemperatureReadingNotFoundException.class, 
+        CurrentTemperatureNotFoundException.class,
+        ColdRoomNotFoundException.class,
+        JustificationNotFoundException.class,
+        AlertNotFoundException.class,
+        AlertHandlingNotFoundException.class})
+    public ResponseEntity<ErrorResponse> handleResourcesNotFound(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage(), Timestamp.from(Instant.now())));
+    }
+
+    @ExceptionHandler({ReportRuleViolationException.class, BatchRuleViolationException.class,
+        JustificationRuleViolationException.class, JustificationAlreadyExistsException.class})
+    public ResponseEntity<ErrorResponse> handleRuleViolation(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
-                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ex.getMessage(),Timestamp.from(Instant.now())));
+                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ex.getMessage(), Timestamp.from(Instant.now())));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(DataIntegrityViolationException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(
+                        HttpStatus.CONFLICT.value(),
+                        "O registro não pode ser excluído ou alterado porque possui dados relacionados",
+                        Timestamp.from(Instant.now())
+                ));
+    }
+
+    @ExceptionHandler({
+            CategoryAlreadyExistsException.class,
+            BatchAlreadyExistsException.class,
+            SignatureAlreadyExistsException.class,
+            UserAlreadyExistsException.class
+    })
+    public ResponseEntity<ErrorResponse> handleAlreadyExists(RuntimeException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ex.getMessage(), Timestamp.from(Instant.now())));
+    }
+
+    @ExceptionHandler(BatchInvalidDatesException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidBatchDates(BatchInvalidDatesException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), Timestamp.from(Instant.now())));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
@@ -62,6 +126,16 @@ public class GlobalExceptionHandler {
                 .orElse("Dados inválidos");
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), message, Timestamp.from(Instant.now())));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleUnreadableMessage(HttpMessageNotReadableException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(
+                        HttpStatus.BAD_REQUEST.value(),
+                        "O corpo da requisição possui um valor ou formato inválido",
+                        Timestamp.from(Instant.now())
+                ));
     }
 
     @ExceptionHandler(ExpiredJwtException.class)

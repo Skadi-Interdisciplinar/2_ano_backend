@@ -5,12 +5,22 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.bind.support.WebDataBinderFactory;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.method.support.ModelAndViewContainer;
 import skadi.api.config.GlobalExceptionHandler;
 import skadi.api.dto.TemperatureReadingResponse;
 import skadi.api.dto.TemperatureReadingView;
+import skadi.api.enums.NivelAcesso;
+import skadi.api.exceptions.ColdRoomNotFoundException;
+import skadi.api.exceptions.TemperatureReadingNotFoundException;
+import skadi.api.model.User;
 import skadi.api.service.TemperatureReadingService;
 
 import java.math.BigDecimal;
@@ -32,12 +42,29 @@ class TemperatureReadingControllerTest {
     private TemperatureReadingService service;
 
     private MockMvc mockMvc;
+    private User user;
 
     @BeforeEach
     void setUp() {
+        user = new User(7L, "Test User", "testuser", "12345678901",
+                "test@example.com", "password", NivelAcesso.OPERADOR, 1, null);
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new TemperatureReadingController(service))
                 .setControllerAdvice(new GlobalExceptionHandler())
+                .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
+                    @Override
+                    public boolean supportsParameter(MethodParameter parameter) {
+                        return parameter.hasParameterAnnotation(AuthenticationPrincipal.class);
+                    }
+
+                    @Override
+                    public Object resolveArgument(MethodParameter parameter,
+                                                  ModelAndViewContainer mavContainer,
+                                                  NativeWebRequest webRequest,
+                                                  WebDataBinderFactory binderFactory) {
+                        return user;
+                    }
+                })
                 .build();
     }
 
@@ -81,7 +108,7 @@ class TemperatureReadingControllerTest {
 
     @Test
     void findAll_returnsReadingsFromPostgres() throws Exception {
-        when(service.findAll()).thenReturn(List.of(reading()));
+        when(service.findAll(1, NivelAcesso.OPERADOR)).thenReturn(List.of(reading()));
 
         mockMvc.perform(get("/readings"))
                 .andExpect(status().isOk())
@@ -93,8 +120,30 @@ class TemperatureReadingControllerTest {
     }
 
     @Test
+    void findById_returnsReadingForTheAuthenticatedUsersCd() throws Exception {
+        when(service.findById(10, 1, NivelAcesso.OPERADOR)).thenReturn(reading());
+
+        mockMvc.perform(get("/readings/10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.readingId").value(10))
+                .andExpect(jsonPath("$.coldRoomId").value(3));
+    }
+
+    @Test
+    void findById_returns404WhenReadingIsMissingOrOutsideUsersCd() throws Exception {
+        when(service.findById(10, 1, NivelAcesso.OPERADOR))
+                .thenThrow(new TemperatureReadingNotFoundException(10));
+
+        mockMvc.perform(get("/readings/10"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.statusCode").value(404))
+                .andExpect(jsonPath("$.message").value("Leitura de temperatura não encontrada: 10"));
+    }
+
+    @Test
     void findByColdRoom_returnsReadingsForTheColdRoom() throws Exception {
-        when(service.findHistoryByColdRoom(3L, null, null)).thenReturn(List.of(reading()));
+        when(service.findHistoryByColdRoom(3L, 1, NivelAcesso.OPERADOR, null, null))
+                .thenReturn(List.of(reading()));
 
         mockMvc.perform(get("/readings/cold-rooms/3"))
                 .andExpect(status().isOk())
@@ -103,17 +152,34 @@ class TemperatureReadingControllerTest {
     }
 
     @Test
+    void findByColdRoom_returns404WhenColdRoomIsOutsideUsersCd() throws Exception {
+        when(service.findHistoryByColdRoom(3L, 1, NivelAcesso.OPERADOR, null, null))
+                .thenThrow(new ColdRoomNotFoundException(3L));
+
+        mockMvc.perform(get("/readings/cold-rooms/3"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.statusCode").value(404))
+                .andExpect(jsonPath("$.message").value("Câmara frigorífica não encontrada: 3"));
+    }
+
+    @Test
     void findCurrentByColdRoom_returns404WhenThereIsNoReading() throws Exception {
-        when(service.findCurrentByColdRoom(3L)).thenReturn(java.util.Optional.empty());
+        when(service.findCurrentByColdRoom(3L, 1, NivelAcesso.OPERADOR))
+                .thenReturn(java.util.Optional.empty());
 
         mockMvc.perform(get("/readings/cold-rooms/3/current-temperature"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.statusCode").value(404))
+                .andExpect(jsonPath("$.message")
+                        .value("Temperatura atual não encontrada para a câmara frigorífica 3"));
     }
 
     @Test
     void findHistoryByColdRoom_acceptsAnOptionalPeriod() throws Exception {
         when(service.findHistoryByColdRoom(
                 org.mockito.ArgumentMatchers.eq(3L),
+                org.mockito.ArgumentMatchers.eq(1),
+                org.mockito.ArgumentMatchers.eq(NivelAcesso.OPERADOR),
                 org.mockito.ArgumentMatchers.eq(LocalDateTime.of(2026, 10, 1, 0, 0)),
                 org.mockito.ArgumentMatchers.eq(LocalDateTime.of(2026, 10, 4, 23, 59))
         )).thenReturn(List.of(reading()));
@@ -126,8 +192,23 @@ class TemperatureReadingControllerTest {
     }
 
     @Test
+    void findHistoryByColdRoom_returns404WhenColdRoomIsOutsideUsersCd() throws Exception {
+        when(service.findHistoryByColdRoom(3L, 1, NivelAcesso.OPERADOR,
+                LocalDateTime.of(2026, 10, 1, 0, 0), LocalDateTime.of(2026, 10, 4, 23, 59)))
+                .thenThrow(new ColdRoomNotFoundException(3L));
+
+        mockMvc.perform(get("/readings/cold-rooms/3/temperature-history")
+                        .param("from", "2026-10-01T00:00:00-03:00")
+                        .param("to", "2026-10-04T23:59:00-03:00"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.statusCode").value(404))
+                .andExpect(jsonPath("$.message").value("Câmara frigorífica não encontrada: 3"));
+    }
+
+    @Test
     void findCurrentByColdRoom_returnsTheMostRecentReading() throws Exception {
-        when(service.findCurrentByColdRoom(3L)).thenReturn(java.util.Optional.of(reading()));
+        when(service.findCurrentByColdRoom(3L, 1, NivelAcesso.OPERADOR))
+                .thenReturn(java.util.Optional.of(reading()));
 
         mockMvc.perform(get("/readings/cold-rooms/3/current-temperature"))
                 .andExpect(status().isOk())
