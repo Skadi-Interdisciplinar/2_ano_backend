@@ -48,7 +48,7 @@ class TemperatureReadingControllerTest {
     @BeforeEach
     void setUp() {
         user = new User(7L, "Test User", "testuser", "12345678901",
-                "test@example.com", "password", NivelAcesso.OPERARIO,
+                "test@example.com", "password", NivelAcesso.OPERADOR,
                 new DistributionCenter(1L, "CD de teste", "12345678901234"), null);
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new TemperatureReadingController(service))
@@ -110,7 +110,7 @@ class TemperatureReadingControllerTest {
 
     @Test
     void findAll_returnsReadingsFromPostgres() throws Exception {
-        when(service.findAll(1, NivelAcesso.OPERARIO)).thenReturn(List.of(reading()));
+        when(service.findAll(1, NivelAcesso.OPERADOR)).thenReturn(List.of(reading()));
 
         mockMvc.perform(get("/readings"))
                 .andExpect(status().isOk())
@@ -123,7 +123,7 @@ class TemperatureReadingControllerTest {
 
     @Test
     void findById_returnsReadingForTheAuthenticatedUsersCd() throws Exception {
-        when(service.findById(10, 1, NivelAcesso.OPERARIO)).thenReturn(reading());
+        when(service.findById(10, 1, NivelAcesso.OPERADOR)).thenReturn(reading());
 
         mockMvc.perform(get("/readings/10"))
                 .andExpect(status().isOk())
@@ -133,7 +133,7 @@ class TemperatureReadingControllerTest {
 
     @Test
     void findById_returns404WhenReadingIsMissingOrOutsideUsersCd() throws Exception {
-        when(service.findById(10, 1, NivelAcesso.OPERARIO))
+        when(service.findById(10, 1, NivelAcesso.OPERADOR))
                 .thenThrow(new TemperatureReadingNotFoundException(10));
 
         mockMvc.perform(get("/readings/10"))
@@ -144,7 +144,7 @@ class TemperatureReadingControllerTest {
 
     @Test
     void findByColdRoom_returnsReadingsForTheColdRoom() throws Exception {
-        when(service.findHistoryByColdRoom(3L, 1, NivelAcesso.OPERARIO, null, null))
+        when(service.findHistoryByColdRoom(3L, 1, NivelAcesso.OPERADOR, null, null))
                 .thenReturn(List.of(reading()));
 
         mockMvc.perform(get("/readings/cold-rooms/3"))
@@ -155,7 +155,7 @@ class TemperatureReadingControllerTest {
 
     @Test
     void findByColdRoom_returns404WhenColdRoomIsOutsideUsersCd() throws Exception {
-        when(service.findHistoryByColdRoom(3L, 1, NivelAcesso.OPERARIO, null, null))
+        when(service.findHistoryByColdRoom(3L, 1, NivelAcesso.OPERADOR, null, null))
                 .thenThrow(new ColdRoomNotFoundException(3L));
 
         mockMvc.perform(get("/readings/cold-rooms/3"))
@@ -166,7 +166,7 @@ class TemperatureReadingControllerTest {
 
     @Test
     void findCurrentByColdRoom_returns404WhenThereIsNoReading() throws Exception {
-        when(service.findCurrentByColdRoom(3L, 1, NivelAcesso.OPERARIO))
+        when(service.findCurrentByColdRoom(3L, 1, NivelAcesso.OPERADOR))
                 .thenReturn(java.util.Optional.empty());
 
         mockMvc.perform(get("/readings/cold-rooms/3/current-temperature"))
@@ -181,7 +181,7 @@ class TemperatureReadingControllerTest {
         when(service.findHistoryByColdRoom(
                 org.mockito.ArgumentMatchers.eq(3L),
                 org.mockito.ArgumentMatchers.eq(1),
-                org.mockito.ArgumentMatchers.eq(NivelAcesso.OPERARIO),
+                org.mockito.ArgumentMatchers.eq(NivelAcesso.OPERADOR),
                 org.mockito.ArgumentMatchers.eq(LocalDateTime.of(2026, 10, 1, 0, 0)),
                 org.mockito.ArgumentMatchers.eq(LocalDateTime.of(2026, 10, 4, 23, 59))
         )).thenReturn(List.of(reading()));
@@ -195,7 +195,7 @@ class TemperatureReadingControllerTest {
 
     @Test
     void findHistoryByColdRoom_returns404WhenColdRoomIsOutsideUsersCd() throws Exception {
-        when(service.findHistoryByColdRoom(3L, 1, NivelAcesso.OPERARIO,
+        when(service.findHistoryByColdRoom(3L, 1, NivelAcesso.OPERADOR,
                 LocalDateTime.of(2026, 10, 1, 0, 0), LocalDateTime.of(2026, 10, 4, 23, 59)))
                 .thenThrow(new ColdRoomNotFoundException(3L));
 
@@ -209,7 +209,7 @@ class TemperatureReadingControllerTest {
 
     @Test
     void findCurrentByColdRoom_returnsTheMostRecentReading() throws Exception {
-        when(service.findCurrentByColdRoom(3L, 1, NivelAcesso.OPERARIO))
+        when(service.findCurrentByColdRoom(3L, 1, NivelAcesso.OPERADOR))
                 .thenReturn(java.util.Optional.of(reading()));
 
         mockMvc.perform(get("/readings/cold-rooms/3/current-temperature"))

@@ -63,7 +63,7 @@ class AlertControllerTest {
                 })
                 .build();
         user = new User(7L, "Operator", "operator", "12345678901",
-                "email@test.com", "senha", NivelAcesso.OPERARIO,
+                "email@test.com", "senha", NivelAcesso.OPERADOR,
                 new DistributionCenter(1L, "CD de teste", "12345678901234"), null);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));

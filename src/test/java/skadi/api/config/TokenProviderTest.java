@@ -47,7 +47,7 @@ class TokenProviderTest {
 
     @Test
     void generateToken_usesPrincipalUsername() {
-        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.OPERARIO, new DistributionCenter(1L, "CD Osasco", "12345678901234"), 2);
+        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.OPERADOR, new DistributionCenter(1L, "CD Osasco", "12345678901234"), 2);
         when(authentication.getPrincipal()).thenReturn(user);
 
         String token = tokenProvider.generateToken(authentication);
