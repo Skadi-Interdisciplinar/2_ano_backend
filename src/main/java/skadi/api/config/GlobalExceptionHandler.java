@@ -12,6 +12,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import skadi.api.dto.ErrorResponse;
+import skadi.api.exceptions.CdNotFoundException;
 import skadi.api.exceptions.AlertHandlingNotFoundException;
 import skadi.api.exceptions.AlertNotFoundException;
 import skadi.api.exceptions.ReportNotFoundException;
@@ -103,6 +104,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleUsernameNotFound(UsernameNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ErrorResponse(HttpStatus.UNAUTHORIZED.value(), ex.getMessage(),Timestamp.from(Instant.now())) );
+    }
+
+    @ExceptionHandler(CdNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCdNotFound(CdNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage(), Timestamp.from(Instant.now())));
     }
 
     @ExceptionHandler(RuntimeException.class)

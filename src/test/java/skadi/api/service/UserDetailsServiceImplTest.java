@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import skadi.api.config.GlobalExceptionHandler;
 import skadi.api.dto.ErrorResponse;
 import skadi.api.enums.NivelAcesso;
+import skadi.api.model.DistributionCenter;
 import skadi.api.model.User;
 import skadi.api.repository.UserRepository;
 
@@ -34,7 +35,7 @@ class UserDetailsServiceImplTest {
 
     @Test
     void loadUserByUsername_returnsUserWhenFound() {
-        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.GESTOR, 1, 2);
+        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.GESTOR, new DistributionCenter(1L, "CD Osasco", "12345678901234"), 2);
         when(userRepository.findByUsername("enzo")).thenReturn(Optional.of(user));
 
         UserDetails encontrado = userDetailsService.loadUserByUsername("enzo");

@@ -4,5 +4,5 @@ public enum NivelAcesso {
     SUPER_ADMIN,
     ADMIN,
     GESTOR,
-    OPERADOR
+    OPERARIO
 }

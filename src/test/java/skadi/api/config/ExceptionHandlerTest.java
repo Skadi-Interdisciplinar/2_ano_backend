@@ -9,6 +9,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import skadi.api.dto.ErrorResponse;
+import skadi.api.exceptions.CdNotFoundException;
 import skadi.api.exceptions.SignatureAlreadyExistsException;
 import skadi.api.exceptions.UserAlreadyExistsException;
 
@@ -97,5 +98,16 @@ class ExceptionHandlerTest {
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
         assertEquals(500, response.getBody().statusCode());
         assertEquals("Token inválido", response.getBody().message());
+    }
+
+    @Test
+    void handleCdNotFound_returns404() {
+        ResponseEntity<ErrorResponse> response = exceptionHandler.handleCdNotFound(
+                new CdNotFoundException()
+        );
+
+        assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+        assertEquals(404, response.getBody().statusCode());
+        assertEquals("Centro de distribuição não encontrado", response.getBody().message());
     }
 }
