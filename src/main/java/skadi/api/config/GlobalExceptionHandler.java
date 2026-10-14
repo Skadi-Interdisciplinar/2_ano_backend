@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import skadi.api.dto.ErrorResponse;
+import skadi.api.exceptions.CdNotFoundException;
 import skadi.api.exceptions.UserAlreadyExistsException;
 
 import java.sql.Timestamp;
@@ -39,6 +40,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleUsernameNotFound(UsernameNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ErrorResponse(HttpStatus.UNAUTHORIZED.value(), ex.getMessage(),Timestamp.from(Instant.now())) );
+    }
+
+    @ExceptionHandler(CdNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleCdNotFound(CdNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage(), Timestamp.from(Instant.now())));
     }
 
     @ExceptionHandler(RuntimeException.class)

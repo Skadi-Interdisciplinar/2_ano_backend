@@ -23,6 +23,7 @@ import skadi.api.dto.RegisterRequest;
 import skadi.api.dto.TokenResponse;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.exceptions.UserAlreadyExistsException;
+import skadi.api.model.DistributionCenter;
 import skadi.api.model.User;
 import skadi.api.repository.UserRepository;
 
@@ -63,10 +64,11 @@ class UserServiceTest {
 
     @Test
     void register_savesUserWhenUsernameIsAvailable() {
+        DistributionCenter cd = new DistributionCenter(1L, "CD Osasco", "12345678901234");
         RegisterRequest request = new RegisterRequest(
-                "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, 1, null
+                "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, cd, null
         );
-        User salvo = new User(10L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, 1, null);
+        User salvo = new User(10L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, cd, null);
         when(repository.existsByUsername("enzo")).thenReturn(false);
         when(passwordEncoder.encode("senha")).thenReturn("$2a$10$hashed");
         when(repository.save(any(User.class))).thenReturn(salvo);
@@ -83,7 +85,8 @@ class UserServiceTest {
     @Test
     void register_throwsWhenCreatingSuperAdmin() {
         RegisterRequest request = new RegisterRequest(
-                "Root", "root", "12345678901", "root@email.com", "senha", NivelAcesso.SUPER_ADMIN, 1, null
+                "Root", "root", "12345678901", "root@email.com", "senha", NivelAcesso.SUPER_ADMIN,
+                new DistributionCenter(1L, "CD Osasco", "12345678901234"), null
         );
 
         AccessDeniedException erro = assertThrows(
@@ -100,7 +103,8 @@ class UserServiceTest {
     @Test
     void register_throwsWhenUsernameAlreadyExists() {
         RegisterRequest request = new RegisterRequest(
-                "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, 1, null
+                "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN,
+                new DistributionCenter(1L, "CD Osasco", "12345678901234"), null
         );
         when(repository.existsByUsername("enzo")).thenReturn(true);
 

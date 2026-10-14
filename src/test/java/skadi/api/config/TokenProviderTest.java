@@ -9,6 +9,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import org.springframework.security.core.Authentication;
 import org.springframework.test.util.ReflectionTestUtils;
 import skadi.api.enums.NivelAcesso;
+import skadi.api.model.DistributionCenter;
 import skadi.api.model.User;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,7 +47,7 @@ class TokenProviderTest {
 
     @Test
     void generateToken_usesPrincipalUsername() {
-        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.OPERARIO, 1, 2);
+        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.OPERARIO, new DistributionCenter(1L, "CD Osasco", "12345678901234"), 2);
         when(authentication.getPrincipal()).thenReturn(user);
 
         String token = tokenProvider.generateToken(authentication);

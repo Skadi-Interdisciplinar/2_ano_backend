@@ -3,11 +3,13 @@ package skadi.api.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 import skadi.api.model.TemperatureReading;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
+@Repository
 public interface TemperatureReadingRepository extends JpaRepository<TemperatureReading, Integer> {
 
     @Query(value = """

@@ -1,13 +1,6 @@
 package skadi.api.model;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Column;
+import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -42,11 +35,9 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     @Column(name = "nivel_acesso")
     private NivelAcesso nivelAcesso;
-    // @ManyToOne(fetch = FetchType.LAZY)
-    // @JoinColumn(name = "id")
-    // TODO: adicionar CD
-    @Column(name = "cod_cd")
-    private Integer codCD;
+     @ManyToOne(fetch = FetchType.LAZY)
+     @JoinColumn(name = "cod_id")
+     private  DistributionCenter cd;
 
     // @ManyToOne(fetch = FetchType.LAZY)
     // @JoinColumn(name = "id")
@@ -56,14 +47,14 @@ public class User implements UserDetails {
 
 
 
-    public User(String nome, String username, String cpf, String email, String senha, NivelAcesso nivelAcesso, Integer codCD, Integer codGestor) {
+    public User(String nome, String username, String cpf, String email, String senha, NivelAcesso nivelAcesso, DistributionCenter cd, Integer codGestor) {
         this.nome = nome;
         this.username = username;
         this.cpf = cpf;
         this.email = email;
         this.senha = senha;
         this.nivelAcesso = nivelAcesso;
-        this.codCD = codCD;
+        this.cd = cd;
         this.codGestor = codGestor;
     }
 

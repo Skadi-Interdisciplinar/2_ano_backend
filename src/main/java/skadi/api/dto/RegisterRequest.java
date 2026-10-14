@@ -1,6 +1,7 @@
 package skadi.api.dto;
 
 import skadi.api.enums.NivelAcesso;
+import skadi.api.model.DistributionCenter;
 
 public record RegisterRequest(
         String nome,
@@ -9,7 +10,7 @@ public record RegisterRequest(
         String email,
         String senha,
         NivelAcesso nivelAcesso,
-        Integer codCD,
+        DistributionCenter cd,
         Integer codGestor
 ) {
 }

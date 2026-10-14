@@ -13,7 +13,7 @@ class UserTest {
 
     @Test
     void getAuthorities_returnsRoleFromAccessLevel() {
-        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, 1, null);
+        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, new DistributionCenter(1L, "CD Osasco", "12345678901234"), null);
 
         List<String> authorities = user.getAuthorities().stream()
                 .map(GrantedAuthority::getAuthority)
@@ -31,7 +31,7 @@ class UserTest {
 
     @Test
     void getPassword_returnsPlainPassword() {
-        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senhaPura", NivelAcesso.OPERARIO, 1, 2);
+        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senhaPura", NivelAcesso.OPERARIO, new DistributionCenter(1L, "CD Osasco", "12345678901234"), 2);
 
         assertEquals("senhaPura", user.getPassword());
         assertEquals("enzo", user.getUsername());

@@ -11,6 +11,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.context.SecurityContextHolder;
 import skadi.api.enums.NivelAcesso;
+import skadi.api.model.DistributionCenter;
 import skadi.api.model.User;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -86,7 +87,7 @@ class JWTConfigurationFilterTest {
 
     @Test
     void validBearer_setsSecurityContext() throws Exception {
-        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, 1, null);
+        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, new DistributionCenter(1L, "CD Osasco", "12345678901234"), null);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer jwt-valido");
         MockHttpServletResponse response = new MockHttpServletResponse();
