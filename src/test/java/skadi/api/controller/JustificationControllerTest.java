@@ -22,6 +22,7 @@ import skadi.api.exceptions.JustificationAlreadyExistsException;
 import skadi.api.exceptions.JustificationNotFoundException;
 import skadi.api.exceptions.JustificationRuleViolationException;
 import skadi.api.model.User;
+import skadi.api.model.DistributionCenter;
 import skadi.api.service.JustificationService;
 
 import java.time.LocalDateTime;
@@ -57,7 +58,8 @@ class JustificationControllerTest {
                             NativeWebRequest webRequest,
                             org.springframework.web.bind.support.WebDataBinderFactory binderFactory) {
                         return new User(7L, "Test User", "test-user", "12345678901",
-                                "test@example.com", "password", NivelAcesso.ADMIN, 1, null);
+                                "test@example.com", "password", NivelAcesso.ADMIN,
+                                new DistributionCenter(1L, "CD de teste", "12345678901234"), null);
                     }
                 })
                 .build();

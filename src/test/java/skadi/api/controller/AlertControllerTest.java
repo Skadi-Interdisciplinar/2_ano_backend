@@ -22,6 +22,7 @@ import skadi.api.exceptions.AlertNotFoundException;
 import skadi.api.service.AlertService;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.model.User;
+import skadi.api.model.DistributionCenter;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -62,7 +63,8 @@ class AlertControllerTest {
                 })
                 .build();
         user = new User(7L, "Operator", "operator", "12345678901",
-                "email@test.com", "senha", NivelAcesso.OPERADOR, 1, null);
+                "email@test.com", "senha", NivelAcesso.OPERARIO,
+                new DistributionCenter(1L, "CD de teste", "12345678901234"), null);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
     }

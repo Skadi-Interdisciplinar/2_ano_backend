@@ -191,10 +191,10 @@ class SignatureServiceTest {
     @Test
     void findAllByCd_rejectsOperatorOrMissingCd() {
         doThrow(new AccessDeniedException("Sem permissão"))
-                .when(reportService).requireReportReadAccess(1, NivelAcesso.OPERADOR);
+                .when(reportService).requireReportReadAccess(1, NivelAcesso.OPERARIO);
         doThrow(new AccessDeniedException("Sem CD"))
                 .when(reportService).requireReportReadAccess(null, NivelAcesso.GESTOR);
-        assertThrows(AccessDeniedException.class, () -> service.findAllByCd(1, NivelAcesso.OPERADOR));
+        assertThrows(AccessDeniedException.class, () -> service.findAllByCd(1, NivelAcesso.OPERARIO));
         assertThrows(AccessDeniedException.class, () -> service.findAllByCd(null, NivelAcesso.GESTOR));
     }
 

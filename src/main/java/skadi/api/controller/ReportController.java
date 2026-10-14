@@ -40,7 +40,7 @@ public class ReportController {
 
     @GetMapping
     public ResponseEntity<List<ReportResponse>> findAll(@AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(service.findAll(user.getCodCD(), user.getNivelAcesso()));
+        return ResponseEntity.ok(service.findAll(user.getCdId(), user.getNivelAcesso()));
     }
 
     @GetMapping("/{id}")
@@ -48,7 +48,7 @@ public class ReportController {
             @PathVariable Integer id,
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.findById(id, user.getCodCD(), user.getNivelAcesso()));
+        return ResponseEntity.ok(service.findById(id, user.getCdId(), user.getNivelAcesso()));
     }
 
     @PatchMapping("/{id}")

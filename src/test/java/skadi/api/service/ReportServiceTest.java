@@ -126,7 +126,7 @@ class ReportServiceTest {
 
     @Test
     void findAll_rejectsUsersWithoutReportAccess() {
-        assertThrows(AccessDeniedException.class, () -> service.findAll(CD_ID, NivelAcesso.OPERADOR));
+        assertThrows(AccessDeniedException.class, () -> service.findAll(CD_ID, NivelAcesso.OPERARIO));
         assertThrows(AccessDeniedException.class, () -> service.findAll(null, NivelAcesso.GESTOR));
         verifyNoInteractions(reportRepository);
     }
