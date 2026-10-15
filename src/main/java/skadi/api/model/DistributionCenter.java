@@ -3,6 +3,7 @@ package skadi.api.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -23,11 +24,12 @@ public class DistributionCenter {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Max(value = 150)
+    @Size(max = 150,message = "Nome não pode passar de 150 carcteres")
     @Column(name = "nome")
     private String name;
 
-    @Length(min = 14,max = 14, message = "CNPJ precisa de 14 números")
+    @Size(min = 14,max = 14, message = "CNPJ precisa de 14 carcteres")
+    @Column(unique = true)
     private String cnpj;
 
     public DistributionCenter(String name, String cnpj) {

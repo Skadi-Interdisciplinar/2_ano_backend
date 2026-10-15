@@ -10,8 +10,8 @@ import java.util.Optional;
 
 public interface DistributionCenterRepository extends JpaRepository<DistributionCenter, Long> {
 
-    public Optional<DistributionCenter> findById(Long id);
+    Optional<DistributionCenter> findById(Long id);
 
-
+    boolean existsByCnpj(String cnpj);
 
 }
