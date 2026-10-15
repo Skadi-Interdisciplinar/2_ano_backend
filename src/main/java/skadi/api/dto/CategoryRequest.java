@@ -1,6 +1,7 @@
 package skadi.api.dto;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -20,8 +21,9 @@ public record CategoryRequest(
 
         @NotNull(message = "A vida útil em horas é obrigatória")
         @DecimalMin(value = "0.01", message = "A vida útil deve ser maior que zero")
-        @Digits(integer = 5, fraction = 2,
-                message = "A vida útil deve ter até 5 dígitos inteiros e 2 decimais")
+        @DecimalMax(value = "999.99", message = "A vida útil deve ser menor que 1000 horas")
+        @Digits(integer = 3, fraction = 2,
+                message = "A vida útil deve ter até 3 dígitos inteiros e 2 decimais")
         BigDecimal shelfLifeHours
 ) {
 }
