@@ -1,5 +1,7 @@
 package skadi.api.controller;
 
+import jakarta.validation.Valid;
+import lombok.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,12 +25,12 @@ import java.util.List;
 public class DistributionCenterController {
     private final DistributionCenterService service;
 
-    public DistributionCenterController(DistributionCenterService service) {
+    public DistributionCenterController( DistributionCenterService service) {
         this.service = service;
     }
 
     @PostMapping
-    public ResponseEntity<DistributionCenter> insertCd(@RequestBody DistributionCenterRequest request) {
+    public ResponseEntity<DistributionCenter> insertCd(@RequestBody @Valid DistributionCenterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.insertCd(request));
     }
 
@@ -38,7 +40,7 @@ public class DistributionCenterController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<DistributionCenter> findCDById(@PathVariable Long id) {
+    public ResponseEntity<DistributionCenter> findCDById(@PathVariable  Long id) {
         return service.findCDById(id)
                 .map(ResponseEntity::ok)
                 .orElseThrow(CdNotFoundException::new);
@@ -47,7 +49,7 @@ public class DistributionCenterController {
     @PutMapping("/{id}")
     public ResponseEntity<DistributionCenter> updateCD(
             @PathVariable Long id,
-            @RequestBody DistributionCenterRequest request
+            @RequestBody @Valid DistributionCenterRequest request
     ) {
         return ResponseEntity.ok(service.updateCD(request, id));
     }

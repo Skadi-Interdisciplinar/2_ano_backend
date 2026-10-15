@@ -4,6 +4,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import skadi.api.dto.DistributionCenterRequest;
 import skadi.api.exceptions.CdNotFoundException;
+import skadi.api.exceptions.DuplicatedCnpjException;
 import skadi.api.mapper.DistributionCenterMapper;
 import skadi.api.model.DistributionCenter;
 import skadi.api.repository.DistributionCenterRepository;
@@ -18,6 +19,10 @@ public class DistributionCenterService {
 
 
     public DistributionCenter insertCd(DistributionCenterRequest request){
+        if (repository.existsByCnpj(request.cnpj())){
+            throw new DuplicatedCnpjException();
+        }
+
         DistributionCenter distributionCenter = DistributionCenterMapper.fromDTO(request);
         DistributionCenter cd = repository.save(distributionCenter);
         return cd;

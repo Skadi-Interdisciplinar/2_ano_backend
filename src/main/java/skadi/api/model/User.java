@@ -36,13 +36,10 @@ public class User implements UserDetails {
     @Column(name = "nivel_acesso")
     private NivelAcesso nivelAcesso;
      @ManyToOne(fetch = FetchType.LAZY)
-     @JoinColumn(name = "cod_id")
+     @JoinColumn(name = "cod_cd")
      private  DistributionCenter cd;
 
-    // @ManyToOne(fetch = FetchType.LAZY)
-    // @JoinColumn(name = "id")
-    // TODO: adicionar gestor
-    @Column(name = "cod_gestor")
+     @Column(name = "cod_gestor")
     private Integer codGestor;
 
 
