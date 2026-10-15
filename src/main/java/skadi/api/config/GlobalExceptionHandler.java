@@ -35,6 +35,8 @@ import skadi.api.exceptions.UserAlreadyExistsException;
 import skadi.api.exceptions.AddressAlreadyExistsException;
 import skadi.api.exceptions.AddressNotFoundException;
 import skadi.api.exceptions.StateNotFoundException;
+import skadi.api.exceptions.ThermometerNotFoundException;
+import skadi.api.exceptions.ThermometerRuleViolationException;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -53,14 +55,16 @@ public class GlobalExceptionHandler {
         AlertNotFoundException.class,
         AlertHandlingNotFoundException.class,
         AddressNotFoundException.class,
-        StateNotFoundException.class})
+        StateNotFoundException.class,
+        ThermometerNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleResourcesNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage(), Timestamp.from(Instant.now())));
     }
 
     @ExceptionHandler({ReportRuleViolationException.class, BatchRuleViolationException.class,
-        JustificationRuleViolationException.class, JustificationAlreadyExistsException.class})
+        JustificationRuleViolationException.class, JustificationAlreadyExistsException.class,
+        ThermometerRuleViolationException.class})
     public ResponseEntity<ErrorResponse> handleRuleViolation(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ex.getMessage(), Timestamp.from(Instant.now())));
