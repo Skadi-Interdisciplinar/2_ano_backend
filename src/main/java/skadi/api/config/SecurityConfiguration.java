@@ -21,7 +21,7 @@ import skadi.api.service.UserDetailsServiceImpl;
 
 @Configuration
 @EnableWebSecurity
-public class SecurityCongifuration {
+public class SecurityConfiguration {
 
     @Bean
     public PasswordEncoder encoder() {
@@ -62,11 +62,11 @@ public class SecurityCongifuration {
                                 )
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/register").hasRole("ADMIN")
+                        .requestMatchers("/batches", "/batches/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/register").hasRole("SUPER_ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/super_admin/**").hasRole("SUPER_ADMIN")
-                        .requestMatchers("/operario/**").hasRole("OPERARIO")
+                        .requestMatchers("/operador/**").hasRole("OPERADOR")
                         .requestMatchers("/gestor/**").hasRole("GESTOR")
                         .anyRequest().authenticated()
                 )

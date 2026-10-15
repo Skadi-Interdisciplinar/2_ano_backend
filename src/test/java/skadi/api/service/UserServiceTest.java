@@ -112,7 +112,7 @@ class UserServiceTest {
                 UserAlreadyExistsException.class,
                 () -> userService.register(request)
         );
-        ResponseEntity<ErrorResponse> response = exceptionHandler.handleUserAlreadyExists(erro);
+        ResponseEntity<ErrorResponse> response = exceptionHandler.handleAlreadyExists(erro);
 
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
         assertEquals(409, response.getBody().statusCode());
