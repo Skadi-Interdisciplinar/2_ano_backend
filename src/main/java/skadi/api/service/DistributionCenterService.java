@@ -3,6 +3,8 @@ package skadi.api.service;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
 import skadi.api.dto.DistributionCenterRequest;
+import skadi.api.dto.DistributionCenterRequestName;
+import skadi.api.dto.DistributionCenterResponse;
 import skadi.api.exceptions.CdNotFoundException;
 import skadi.api.exceptions.DuplicatedCnpjException;
 import skadi.api.mapper.DistributionCenterMapper;
@@ -10,54 +12,52 @@ import skadi.api.model.DistributionCenter;
 import skadi.api.repository.DistributionCenterRepository;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 @AllArgsConstructor
 public class DistributionCenterService {
     public final DistributionCenterRepository repository;
 
-
-    public DistributionCenter insertCd(DistributionCenterRequest request){
-        if (repository.existsByCnpj(request.cnpj())){
+    public DistributionCenterResponse insertCd(DistributionCenterRequest request) {
+        if (repository.existsByCnpj(request.cnpj())) {
             throw new DuplicatedCnpjException();
         }
 
-        DistributionCenter distributionCenter = DistributionCenterMapper.fromDTO(request);
-        DistributionCenter cd = repository.save(distributionCenter);
-        return cd;
+        DistributionCenter cd = repository.save(DistributionCenterMapper.fromDTO(request));
+        return DistributionCenterMapper.toDTO(cd);
     }
 
-
-    public List<DistributionCenter> findAllCD(){
-        return repository.findAll();
+    public List<DistributionCenterResponse> findAllCD() {
+        return DistributionCenterMapper.toDTOList(repository.findAll());
     }
 
-    public Optional<DistributionCenter> findCDById(Long id){
-        return repository.findById(id);
+    public DistributionCenterResponse findCDById(Long id) {
+        DistributionCenter cd = repository.findById(id).orElseThrow(CdNotFoundException::new);
+        return DistributionCenterMapper.toDTO(cd);
     }
 
-    public DistributionCenter updateCD(DistributionCenterRequest request, Long id){
-
+    public DistributionCenterResponse updateCD(DistributionCenterRequest request, Long id) {
         DistributionCenter cd = repository.findById(id).orElseThrow(CdNotFoundException::new);
 
         cd.setName(request.name());
         cd.setCnpj(request.cnpj());
 
-        return repository.save(cd);
-
-
+        return DistributionCenterMapper.toDTO(repository.save(cd));
     }
 
-    public DistributionCenter updateNameCd(String name,Long id){
+    public DistributionCenterResponse updateNameCd(DistributionCenterRequestName request, Long id) {
         DistributionCenter cd = repository.findById(id).orElseThrow(CdNotFoundException::new);
 
-        cd.setName(name);
+        cd.setName(request.name());
 
-        return repository.save(cd);
+        return DistributionCenterMapper.toDTO(repository.save(cd));
     }
 
+    public void deleteCD(Long id) {
+        if (!repository.existsById(id)) {
+            throw new CdNotFoundException("Centro de distribuição não existe");
+        }
 
-
-
+        repository.deleteById(id);
+    }
 }

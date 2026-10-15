@@ -27,9 +27,13 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String nome;
+
+    @Column(unique = true)
     private String username;
-    @Length(max = 11)
+    @Length(max = 11,min = 11,message = "Cpf precisa ter 11 caracteres")
     private String cpf;
+
+    @Column(unique = true)
     private String email;
     private String senha;
     @Enumerated(EnumType.STRING)
@@ -40,7 +44,7 @@ public class User implements UserDetails {
      private  DistributionCenter cd;
 
      @Column(name = "cod_gestor")
-    private Integer codGestor;
+     private Integer codGestor;
 
 
 

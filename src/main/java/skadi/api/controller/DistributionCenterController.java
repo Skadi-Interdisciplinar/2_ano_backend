@@ -1,9 +1,9 @@
 package skadi.api.controller;
 
 import jakarta.validation.Valid;
-import lombok.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -11,11 +11,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import skadi.api.dto.DistributionCenterRequest;
-import skadi.api.exceptions.CdNotFoundException;
-import skadi.api.model.DistributionCenter;
+import skadi.api.dto.DistributionCenterRequestName;
+import skadi.api.dto.DistributionCenterResponse;
 import skadi.api.service.DistributionCenterService;
 
 import java.util.List;
@@ -25,29 +24,27 @@ import java.util.List;
 public class DistributionCenterController {
     private final DistributionCenterService service;
 
-    public DistributionCenterController( DistributionCenterService service) {
+    public DistributionCenterController(DistributionCenterService service) {
         this.service = service;
     }
 
     @PostMapping
-    public ResponseEntity<DistributionCenter> insertCd(@RequestBody @Valid DistributionCenterRequest request) {
+    public ResponseEntity<DistributionCenterResponse> insertCd(@RequestBody @Valid DistributionCenterRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.insertCd(request));
     }
 
     @GetMapping
-    public ResponseEntity<List<DistributionCenter>> findAllCD() {
+    public ResponseEntity<List<DistributionCenterResponse>> findAllCD() {
         return ResponseEntity.ok(service.findAllCD());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<DistributionCenter> findCDById(@PathVariable  Long id) {
-        return service.findCDById(id)
-                .map(ResponseEntity::ok)
-                .orElseThrow(CdNotFoundException::new);
+    public ResponseEntity<DistributionCenterResponse> findCDById(@PathVariable Long id) {
+        return ResponseEntity.ok(service.findCDById(id));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<DistributionCenter> updateCD(
+    public ResponseEntity<DistributionCenterResponse> updateCD(
             @PathVariable Long id,
             @RequestBody @Valid DistributionCenterRequest request
     ) {
@@ -55,10 +52,16 @@ public class DistributionCenterController {
     }
 
     @PatchMapping("/{id}/name")
-    public ResponseEntity<DistributionCenter> updateNameCd(
+    public ResponseEntity<DistributionCenterResponse> updateNameCd(
             @PathVariable Long id,
-            @RequestParam String name
+            @RequestBody @Valid DistributionCenterRequestName request
     ) {
-        return ResponseEntity.ok(service.updateNameCd(name, id));
+        return ResponseEntity.ok(service.updateNameCd(request, id));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteCd(@PathVariable Long id) {
+        service.deleteCD(id);
+        return ResponseEntity.noContent().build();
     }
 }

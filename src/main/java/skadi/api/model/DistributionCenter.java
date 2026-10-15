@@ -29,6 +29,7 @@ public class DistributionCenter {
     private String name;
 
     @Size(min = 14,max = 14, message = "CNPJ precisa de 14 carcteres")
+    @Column(unique = true)
     private String cnpj;
 
     public DistributionCenter(String name, String cnpj) {
