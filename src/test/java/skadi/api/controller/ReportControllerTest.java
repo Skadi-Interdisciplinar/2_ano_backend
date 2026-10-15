@@ -24,6 +24,7 @@ import skadi.api.enums.NivelAcesso;
 import skadi.api.enums.ReportStatus;
 import skadi.api.exceptions.ReportNotFoundException;
 import skadi.api.exceptions.ReportRuleViolationException;
+import skadi.api.model.DistributionCenter;
 import skadi.api.model.User;
 import skadi.api.service.ReportService;
 
@@ -54,7 +55,8 @@ class ReportControllerTest {
     @BeforeEach
     void setUp() {
         user = new User(7L, "Test User", "testuser", "12345678901",
-                "test@example.com", "password", NivelAcesso.GESTOR, 1, null);
+                "test@example.com", "password", NivelAcesso.GESTOR,
+                new DistributionCenter(1L, "CD de teste", "12345678901234"), null);
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
         mockMvc = MockMvcBuilders.standaloneSetup(new ReportController(service))

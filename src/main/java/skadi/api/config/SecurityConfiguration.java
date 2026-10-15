@@ -66,7 +66,7 @@ public class SecurityConfiguration {
                         .requestMatchers(HttpMethod.POST, "/register").hasRole("SUPER_ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/super_admin/**").hasRole("SUPER_ADMIN")
-                        .requestMatchers("/operario/**").hasRole("OPERARIO")
+                        .requestMatchers("/operador/**").hasRole("OPERADOR")
                         .requestMatchers("/gestor/**").hasRole("GESTOR")
                         .anyRequest().authenticated()
                 )

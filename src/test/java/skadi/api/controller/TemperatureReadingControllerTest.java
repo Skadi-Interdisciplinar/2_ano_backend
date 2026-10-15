@@ -20,6 +20,7 @@ import skadi.api.dto.TemperatureReadingView;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.exceptions.ColdRoomNotFoundException;
 import skadi.api.exceptions.TemperatureReadingNotFoundException;
+import skadi.api.model.DistributionCenter;
 import skadi.api.model.User;
 import skadi.api.service.TemperatureReadingService;
 
@@ -47,7 +48,8 @@ class TemperatureReadingControllerTest {
     @BeforeEach
     void setUp() {
         user = new User(7L, "Test User", "testuser", "12345678901",
-                "test@example.com", "password", NivelAcesso.OPERADOR, 1, null);
+                "test@example.com", "password", NivelAcesso.OPERADOR,
+                new DistributionCenter(1L, "CD de teste", "12345678901234"), null);
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new TemperatureReadingController(service))
                 .setControllerAdvice(new GlobalExceptionHandler())

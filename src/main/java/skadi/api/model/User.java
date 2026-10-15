@@ -37,7 +37,7 @@ public class User implements UserDetails {
     private NivelAcesso nivelAcesso;
      @ManyToOne(fetch = FetchType.LAZY)
      @JoinColumn(name = "cod_id")
-     private  DistributionCenter cd;
+     private DistributionCenter cd;
 
     // @ManyToOne(fetch = FetchType.LAZY)
     // @JoinColumn(name = "id")
@@ -58,6 +58,10 @@ public class User implements UserDetails {
         this.codGestor = codGestor;
     }
 
+    public Integer getCdId() {
+        return cd == null ? null : Math.toIntExact(cd.getId());
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         if (nivelAcesso == null) {
@@ -70,8 +74,4 @@ public class User implements UserDetails {
     public @Nullable String getPassword() {
         return this.senha;
     }
-
-
-
-
 }

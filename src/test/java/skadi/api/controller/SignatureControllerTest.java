@@ -23,6 +23,7 @@ import skadi.api.enums.NivelAcesso;
 import skadi.api.exceptions.ReportRuleViolationException;
 import skadi.api.exceptions.SignatureAlreadyExistsException;
 import skadi.api.exceptions.SignatureNotFoundException;
+import skadi.api.model.DistributionCenter;
 import skadi.api.model.User;
 import skadi.api.service.SignatureService;
 
@@ -51,7 +52,8 @@ class SignatureControllerTest {
     @BeforeEach
     void setUp() {
         user = new User(7L, "Test User", "testuser", "12345678901",
-                "test@example.com", "password", NivelAcesso.GESTOR, 1, null);
+                "test@example.com", "password", NivelAcesso.GESTOR,
+                new DistributionCenter(1L, "CD de teste", "12345678901234"), null);
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
         mockMvc = MockMvcBuilders.standaloneSetup(new SignatureController(service))

@@ -40,7 +40,7 @@ public class SignatureController {
             @AuthenticationPrincipal User user
     ) {
         Optional<SignatureResponse> signature = service.findByReportId(
-                reportId, user.getCodCD(), user.getNivelAcesso());
+                reportId, user.getCdId(), user.getNivelAcesso());
         return signature.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
@@ -48,7 +48,7 @@ public class SignatureController {
     public ResponseEntity<List<SignatureResponse>> findAll(
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.findAllByCd(user.getCodCD(), user.getNivelAcesso()));
+        return ResponseEntity.ok(service.findAllByCd(user.getCdId(), user.getNivelAcesso()));
     }
 
     @GetMapping("/signatures/{id}")
@@ -56,7 +56,7 @@ public class SignatureController {
             @PathVariable Integer id,
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.findById(id, user.getCodCD(), user.getNivelAcesso()));
+        return ResponseEntity.ok(service.findById(id, user.getCdId(), user.getNivelAcesso()));
     }
 
 }

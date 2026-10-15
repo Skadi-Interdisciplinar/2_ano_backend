@@ -34,7 +34,7 @@ class UserMapperTest {
     @Test
     void toDTO_copiesUserFieldsIncludingCodGestor() {
         DistributionCenter cd = new DistributionCenter(7L, "CD 7", "12345678901234");
-        User user = new User(3L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.OPERARIO, cd, 2);
+        User user = new User(3L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.OPERADOR, cd, 2);
 
         var dto = UserMapper.toDTO(user);
 

@@ -42,7 +42,7 @@ public class TemperatureReadingController {
     public ResponseEntity<List<TemperatureReadingView>> findAll(
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.findAll(user.getCodCD(), user.getNivelAcesso()));
+        return ResponseEntity.ok(service.findAll(user.getCdId(), user.getNivelAcesso()));
     }
 
     @GetMapping("/readings/{readingId}")
@@ -50,7 +50,7 @@ public class TemperatureReadingController {
             @PathVariable Integer readingId,
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.findById(readingId, user.getCodCD(), user.getNivelAcesso()));
+        return ResponseEntity.ok(service.findById(readingId, user.getCdId(), user.getNivelAcesso()));
     }
 
     @GetMapping("/readings/cold-rooms/{coldRoomId}")
@@ -59,7 +59,7 @@ public class TemperatureReadingController {
             @AuthenticationPrincipal User user
     ) {
         return ResponseEntity.ok(service.findHistoryByColdRoom(
-                coldRoomId, user.getCodCD(), user.getNivelAcesso(), null, null));
+                coldRoomId, user.getCdId(), user.getNivelAcesso(), null, null));
     }
 
     @GetMapping("/readings/cold-rooms/{coldRoomId}/current-temperature")
@@ -67,7 +67,7 @@ public class TemperatureReadingController {
             @PathVariable Long coldRoomId,
             @AuthenticationPrincipal User user
     ) {
-        return service.findCurrentByColdRoom(coldRoomId, user.getCodCD(), user.getNivelAcesso())
+        return service.findCurrentByColdRoom(coldRoomId, user.getCdId(), user.getNivelAcesso())
                 .map(ResponseEntity::ok)
                 .orElseThrow(() -> new CurrentTemperatureNotFoundException(coldRoomId));
     }
@@ -85,7 +85,7 @@ public class TemperatureReadingController {
     ) {
         return ResponseEntity.ok(service.findHistoryByColdRoom(
                 coldRoomId,
-                user.getCodCD(),
+                user.getCdId(),
                 user.getNivelAcesso(),
                 from == null ? null : from.toLocalDateTime(),
                 to == null ? null : to.toLocalDateTime()
