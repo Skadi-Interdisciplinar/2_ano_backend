@@ -13,6 +13,7 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.ColumnTransformer;
 import skadi.api.enums.AlertStatus;
 import skadi.api.enums.CurrentLevel;
 import skadi.api.enums.SeverityLevel;
@@ -36,7 +37,11 @@ public class Alert {
     @Column(name = "cod_camara_frigorifica", nullable = false)
     private Integer coldRoomId;
 
-    @Column(name = "vida_util_referencia_horas", precision = 7, scale = 2)
+    @Column(name = "vida_util_referencia_horas", columnDefinition = "INTERVAL HOUR TO MINUTE")
+    @ColumnTransformer(
+            read = "ROUND(EXTRACT(EPOCH FROM vida_util_referencia_horas) / 3600.0, 2)",
+            write = "(ROUND(?::numeric * 60)::double precision * INTERVAL '1 minute')"
+    )
     private BigDecimal referenceShelfLifeHours;
 
     @Enumerated(EnumType.STRING)

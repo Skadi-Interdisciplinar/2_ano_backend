@@ -74,6 +74,21 @@ class CategoryControllerTest {
     }
 
     @Test
+    void createReturns400WhenLifeSpanExceedsIntervalLimit() throws Exception {
+        mockMvc.perform(post("/categories")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "Congelados",
+                                  "idealTemperature": -18.00,
+                                  "shelfLifeHours": 1000.00
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.statusCode").value(400));
+    }
+
+    @Test
     void findAllReturnsCategories() throws Exception {
         when(service.findAll()).thenReturn(List.of(category()));
 
