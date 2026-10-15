@@ -32,6 +32,9 @@ import skadi.api.exceptions.ColdRoomNotFoundException;
 import skadi.api.exceptions.TemperatureReadingNotFoundException;
 import skadi.api.exceptions.CurrentTemperatureNotFoundException;
 import skadi.api.exceptions.UserAlreadyExistsException;
+import skadi.api.exceptions.AddressAlreadyExistsException;
+import skadi.api.exceptions.AddressNotFoundException;
+import skadi.api.exceptions.StateNotFoundException;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -48,7 +51,9 @@ public class GlobalExceptionHandler {
         ColdRoomNotFoundException.class,
         JustificationNotFoundException.class,
         AlertNotFoundException.class,
-        AlertHandlingNotFoundException.class})
+        AlertHandlingNotFoundException.class,
+        AddressNotFoundException.class,
+        StateNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleResourcesNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage(), Timestamp.from(Instant.now())));
@@ -75,7 +80,8 @@ public class GlobalExceptionHandler {
             CategoryAlreadyExistsException.class,
             BatchAlreadyExistsException.class,
             SignatureAlreadyExistsException.class,
-            UserAlreadyExistsException.class
+            UserAlreadyExistsException.class,
+            AddressAlreadyExistsException.class
     })
     public ResponseEntity<ErrorResponse> handleAlreadyExists(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
