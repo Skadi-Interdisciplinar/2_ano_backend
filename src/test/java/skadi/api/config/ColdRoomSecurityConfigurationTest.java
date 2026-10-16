@@ -12,16 +12,11 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import skadi.api.controller.ColdRoomController;
-import skadi.api.dto.ColdRoomResponse;
 import skadi.api.service.ColdRoomService;
 import skadi.api.service.UserDetailsServiceImpl;
 
-import java.math.BigDecimal;
-
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -53,9 +48,7 @@ class ColdRoomSecurityConfigurationTest {
     }
 
     @Test
-    void createAllowsRequestWithoutAuthentication() throws Exception {
-        when(coldRoomService.create(any())).thenReturn(coldRoom());
-
+    void createRejectsRequestWithoutAuthentication() throws Exception {
         mockMvc.perform(post("/cold-room")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -68,27 +61,17 @@ class ColdRoomSecurityConfigurationTest {
                                   "thermometerId": 2
                                 }
                                 """))
-                .andExpect(status().isCreated());
+                .andExpect(status().isUnauthorized());
 
-        verify(coldRoomService).create(any());
+        verifyNoInteractions(coldRoomService);
     }
 
     @Test
-    void findByIdAllowsRequestWithoutAuthentication() throws Exception {
-        when(coldRoomService.findById(3L)).thenReturn(coldRoom());
-
+    void findByIdRejectsRequestWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/cold-rooms/3"))
-                .andExpect(status().isOk());
+                .andExpect(status().isUnauthorized());
 
-        verify(coldRoomService).findById(3L);
-    }
-
-    private ColdRoomResponse coldRoom() {
-        return new ColdRoomResponse(
-                3L, "Câmara vertical", "Corredor A",
-                new BigDecimal("-20.00"), new BigDecimal("-10.00"),
-                1L, "Centro Principal", 2L, "DHT22"
-        );
+        verifyNoInteractions(coldRoomService);
     }
 
     @Configuration(proxyBeanMethods = false)
