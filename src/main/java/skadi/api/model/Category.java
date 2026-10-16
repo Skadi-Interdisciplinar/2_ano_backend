@@ -9,7 +9,6 @@ import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.ColumnTransformer;
 
 import java.math.BigDecimal;
 
@@ -30,10 +29,6 @@ public class Category {
     @Column(name = "temperatura_ideal", nullable = false, precision = 5, scale = 2)
     private BigDecimal idealTemperature;
 
-    @Column(name = "vida_util_horas", nullable = false, columnDefinition = "INTERVAL HOUR TO MINUTE")
-    @ColumnTransformer(
-            read = "ROUND(EXTRACT(EPOCH FROM vida_util_horas) / 3600.0, 2)",
-            write = "(ROUND(?::numeric * 60)::double precision * INTERVAL '1 minute')"
-    )
+    @Column(name = "vida_util_horas", nullable = false, precision = 7, scale = 2)
     private BigDecimal shelfLifeHours;
 }
