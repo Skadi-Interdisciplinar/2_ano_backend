@@ -62,13 +62,7 @@ public class SecurityConfiguration {
                                 )
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/batches", "/batches/**",
-                                "/addresses", "/addresses/**",
-                                "/states", "/states/**",
-                                "/distribution-centers/*/addresses",
-                                "/thermometer", "/thermometers", "/thermometers/**"
-                        ).permitAll()
+                        .requestMatchers("/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/register").hasRole("SUPER_ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/super_admin/**").hasRole("SUPER_ADMIN")
