@@ -66,7 +66,8 @@ public class SecurityConfiguration {
                                 "/batches", "/batches/**",
                                 "/addresses", "/addresses/**",
                                 "/states", "/states/**",
-                                "/distribution-centers/*/addresses"
+                                "/distribution-centers/*/addresses",
+                                "/thermometer", "/thermometers", "/thermometers/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/register").hasRole("SUPER_ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
