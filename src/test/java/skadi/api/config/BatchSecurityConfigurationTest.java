@@ -12,22 +12,14 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 import skadi.api.controller.BatchController;
-import skadi.api.dto.BatchResponse;
-import skadi.api.enums.BatchStatus;
 import skadi.api.service.BatchService;
 import skadi.api.service.UserDetailsServiceImpl;
 
-import java.time.LocalDate;
-
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.setup.MockMvcBuilders.webAppContextSetup;
 
@@ -56,20 +48,15 @@ class BatchSecurityConfigurationTest {
     }
 
     @Test
-    void findById_allowsRequestWithoutAuthentication() throws Exception {
-        when(batchService.findById(13L)).thenReturn(batch());
-
+    void findByIdRejectsRequestWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/batches/13"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(13));
+                .andExpect(status().isUnauthorized());
 
-        verify(batchService).findById(13L);
+        verifyNoInteractions(batchService);
     }
 
     @Test
-    void update_allowsRequestWithoutAuthentication() throws Exception {
-        when(batchService.update(eq(13L), any())).thenReturn(batch());
-
+    void updateRejectsRequestWithoutAuthentication() throws Exception {
         mockMvc.perform(put("/batches/13")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -80,22 +67,9 @@ class BatchSecurityConfigurationTest {
                                   "expirationDate": "2026-10-30"
                                 }
                                 """))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.batchCode").value("LOTE-2026-0015"));
+                .andExpect(status().isUnauthorized());
 
-        verify(batchService).update(eq(13L), any());
-    }
-
-    private BatchResponse batch() {
-        return new BatchResponse(
-                13L,
-                "LOTE-2026-0015",
-                1L,
-                "Alcatra bovina resfriada",
-                LocalDate.of(2026, 10, 1),
-                LocalDate.of(2026, 10, 30),
-                BatchStatus.ACTIVE
-        );
+        verifyNoInteractions(batchService);
     }
 
     @Configuration(proxyBeanMethods = false)

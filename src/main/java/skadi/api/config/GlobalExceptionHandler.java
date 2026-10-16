@@ -37,6 +37,8 @@ import skadi.api.exceptions.AddressNotFoundException;
 import skadi.api.exceptions.StateNotFoundException;
 import skadi.api.exceptions.ThermometerNotFoundException;
 import skadi.api.exceptions.ThermometerRuleViolationException;
+import skadi.api.exceptions.ColdRoomInvalidTemperatureRangeException;
+import skadi.api.exceptions.ColdRoomRuleViolationException;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -64,7 +66,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({ReportRuleViolationException.class, BatchRuleViolationException.class,
         JustificationRuleViolationException.class, JustificationAlreadyExistsException.class,
-        ThermometerRuleViolationException.class})
+        ThermometerRuleViolationException.class, ColdRoomRuleViolationException.class})
     public ResponseEntity<ErrorResponse> handleRuleViolation(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ex.getMessage(), Timestamp.from(Instant.now())));
@@ -94,6 +96,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BatchInvalidDatesException.class)
     public ResponseEntity<ErrorResponse> handleInvalidBatchDates(BatchInvalidDatesException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), Timestamp.from(Instant.now())));
+    }
+
+    @ExceptionHandler(ColdRoomInvalidTemperatureRangeException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidColdRoomTemperatureRange(
+            ColdRoomInvalidTemperatureRangeException ex
+    ) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), Timestamp.from(Instant.now())));
     }
