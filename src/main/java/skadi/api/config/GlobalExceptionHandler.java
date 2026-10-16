@@ -28,6 +28,8 @@ import skadi.api.exceptions.BatchAlreadyExistsException;
 import skadi.api.exceptions.BatchInvalidDatesException;
 import skadi.api.exceptions.BatchNotFoundException;
 import skadi.api.exceptions.BatchRuleViolationException;
+import skadi.api.exceptions.BatchStorageNotFoundException;
+import skadi.api.exceptions.BatchStorageRuleViolationException;
 import skadi.api.exceptions.ColdRoomNotFoundException;
 import skadi.api.exceptions.TemperatureReadingNotFoundException;
 import skadi.api.exceptions.CurrentTemperatureNotFoundException;
@@ -50,6 +52,7 @@ public class GlobalExceptionHandler {
         SignatureNotFoundException.class,
         CategoryNotFoundException.class,
         BatchNotFoundException.class, 
+        BatchStorageNotFoundException.class,
         TemperatureReadingNotFoundException.class, 
         CurrentTemperatureNotFoundException.class,
         ColdRoomNotFoundException.class,
@@ -65,6 +68,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler({ReportRuleViolationException.class, BatchRuleViolationException.class,
+        BatchStorageRuleViolationException.class,
         JustificationRuleViolationException.class, JustificationAlreadyExistsException.class,
         ThermometerRuleViolationException.class, ColdRoomRuleViolationException.class})
     public ResponseEntity<ErrorResponse> handleRuleViolation(RuntimeException ex) {
