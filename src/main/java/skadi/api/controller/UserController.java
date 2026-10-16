@@ -18,7 +18,7 @@ public class UserController {
         this.service = service;
     }
 
-    @PostMapping("auth/register")
+    @PostMapping("/auth/register")
     public ResponseEntity<Void> register(@RequestBody RegisterRequest dto){
         service.register(dto);
         return ResponseEntity.status(HttpStatus.CREATED).build();
@@ -26,7 +26,7 @@ public class UserController {
     }
 
 
-    @PostMapping("auth/login")
+    @PostMapping("/auth/login")
     public ResponseEntity<TokenResponse> login (@RequestBody LoginRequest dto){
         return ResponseEntity.ok(service.login(dto));
     }
