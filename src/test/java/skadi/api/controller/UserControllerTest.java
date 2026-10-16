@@ -49,7 +49,7 @@ class UserControllerTest {
     void register_returns201() throws Exception {
         doNothing().when(userService).register(any());
 
-        mockMvc.perform(post("/register")
+        mockMvc.perform(post("/auth/register")
                         .header(HttpHeaders.AUTHORIZATION, SUPER_ADMIN_BEARER)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -72,7 +72,7 @@ class UserControllerTest {
         Timestamp validUntil = Timestamp.from(Instant.parse("2026-01-01T00:00:00Z"));
         when(userService.login(any())).thenReturn(new TokenResponse("jwt-gerado", 1800L, validUntil));
 
-        mockMvc.perform(post("/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "username": "enzo", "senha": "senha" }
@@ -87,7 +87,7 @@ class UserControllerTest {
     void register_returns409WhenUsernameExists() throws Exception {
         doThrow(new UserAlreadyExistsException()).when(userService).register(any());
 
-        mockMvc.perform(post("/register")
+        mockMvc.perform(post("/auth/register")
                         .header(HttpHeaders.AUTHORIZATION, SUPER_ADMIN_BEARER)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -112,7 +112,7 @@ class UserControllerTest {
         doThrow(new AccessDeniedException("SUPER_ADMIN cadastra apenas ADMIN"))
                 .when(userService).register(any());
 
-        mockMvc.perform(post("/register")
+        mockMvc.perform(post("/auth/register")
                         .header(HttpHeaders.AUTHORIZATION, SUPER_ADMIN_BEARER)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -136,7 +136,7 @@ class UserControllerTest {
     void login_returns401WhenCredentialsAreInvalid() throws Exception {
         when(userService.login(any())).thenThrow(new BadCredentialsException("Credenciais inválidas"));
 
-        mockMvc.perform(post("/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "username": "enzo", "senha": "errada" }
@@ -152,7 +152,7 @@ class UserControllerTest {
                 new RuntimeException("Erro inesperado: java.lang.IllegalStateException: falha")
         );
 
-        mockMvc.perform(post("/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 { "username": "enzo", "senha": "senha" }

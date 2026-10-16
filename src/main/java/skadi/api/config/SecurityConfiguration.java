@@ -62,8 +62,8 @@ public class SecurityConfiguration {
                                 )
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/register").hasRole("SUPER_ADMIN")
+                        .requestMatchers("/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/register").hasRole("SUPER_ADMIN")
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/super_admin/**").hasRole("SUPER_ADMIN")
                         .requestMatchers("/operador/**").hasRole("OPERADOR")
