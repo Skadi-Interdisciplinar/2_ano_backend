@@ -44,7 +44,7 @@ public class AlertController {
             @PathVariable Integer id,
             @AuthenticationPrincipal User user
     ) {
-        service.recognize(id, Math.toIntExact(user.getId()));
+        service.recognize(id, user);
         return ResponseEntity.noContent().build();
     }
 }

@@ -7,12 +7,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 import skadi.api.dto.AlertResponse;
 import skadi.api.enums.AlertStatus;
 import skadi.api.enums.CurrentLevel;
+import skadi.api.enums.NivelAcesso;
 import skadi.api.enums.SeverityLevel;
 import skadi.api.exceptions.AlertNotFoundException;
 import skadi.api.model.Alert;
+import skadi.api.model.DistributionCenter;
+import skadi.api.model.User;
 import skadi.api.repository.AlertRepository;
 
 import java.math.BigDecimal;
@@ -82,6 +86,9 @@ class AlertServiceTest {
 
     @Test
     void recognize_callsDatabaseProcedure() {
+        User user = user(7L, NivelAcesso.OPERADOR, 1L);
+        when(repository.findById(1)).thenReturn(Optional.of(alert(AlertStatus.ATIVO)));
+        when(repository.belongsToDistributionCenter(1, 1)).thenReturn(true);
         when(entityManager.createNativeQuery(
                 "SELECT set_config('app.usuario_atual', :userId, true)"))
                 .thenReturn(query);
@@ -92,12 +99,35 @@ class AlertServiceTest {
         when(query.setParameter("alertId", 1)).thenReturn(query);
         when(query.setParameter("userId", 7)).thenReturn(query);
 
-        service.recognize(1, 7);
+        service.recognize(1, user);
 
         verify(entityManager).createNativeQuery(
                 "SELECT set_config('app.usuario_atual', :userId, true)");
         verify(query).setParameter("userId", "7");
         verify(query).executeUpdate();
+    }
+
+    @Test
+    void recognize_deniesSuperAdmin() {
+        User superAdmin = user(7L, NivelAcesso.SUPER_ADMIN, null);
+
+        assertThrows(AccessDeniedException.class, () -> service.recognize(1, superAdmin));
+    }
+
+    @Test
+    void recognize_deniesUserWithoutDistributionCenter() {
+        User userWithoutCd = user(7L, NivelAcesso.ADMIN, null);
+
+        assertThrows(AccessDeniedException.class, () -> service.recognize(1, userWithoutCd));
+    }
+
+    @Test
+    void recognize_deniesUserFromDifferentDistributionCenter() {
+        User user = user(7L, NivelAcesso.ADMIN, 2L);
+        when(repository.findById(1)).thenReturn(Optional.of(alert(AlertStatus.ATIVO)));
+        when(repository.belongsToDistributionCenter(1, 2)).thenReturn(false);
+
+        assertThrows(AccessDeniedException.class, () -> service.recognize(1, user));
     }
 
     @Test
@@ -111,5 +141,12 @@ class AlertServiceTest {
         return new Alert(1, 3, new BigDecimal("24.00"), CurrentLevel.OPERADOR,
                 LocalDateTime.of(2026, 10, 5, 10, 0),
                 "temperatura_fora_padrao", SeverityLevel.BAIXA, status);
+    }
+
+    private User user(Long id, NivelAcesso nivelAcesso, Long cdId) {
+        DistributionCenter cd = cdId == null ? null
+                : new DistributionCenter(cdId, "CD de teste", "12345678901234");
+        return new User(id, "Usuário", "usuario", "12345678901", "email@test.com",
+                "senha", nivelAcesso, cd, null);
     }
 }
