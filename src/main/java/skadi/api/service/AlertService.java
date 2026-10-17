@@ -2,11 +2,14 @@ package skadi.api.service;
 
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import skadi.api.dto.AlertResponse;
 import skadi.api.enums.AlertStatus;
+import skadi.api.enums.NivelAcesso;
 import skadi.api.exceptions.AlertNotFoundException;
 import skadi.api.model.Alert;
+import skadi.api.model.User;
 import skadi.api.repository.AlertRepository;
 
 import java.util.List;
@@ -55,7 +58,23 @@ public class AlertService {
     }
 
     @Transactional
-    public void recognize(Integer alertId, Integer userId) {
+    public void recognize(Integer alertId, User user) {
+        if (user == null
+                || user.getNivelAcesso() == null
+                || user.getNivelAcesso() == NivelAcesso.SUPER_ADMIN
+                || user.getCdId() == null) {
+            throw new AccessDeniedException(
+                    "Somente usuários vinculados ao CD do alerta podem reconhecê-lo.");
+        }
+
+        repository.findById(alertId)
+                .orElseThrow(() -> new AlertNotFoundException(alertId));
+        if (!repository.belongsToDistributionCenter(alertId, user.getCdId())) {
+            throw new AccessDeniedException(
+                    "Somente usuários vinculados ao CD do alerta podem reconhecê-lo.");
+        }
+
+        Integer userId = Math.toIntExact(user.getId());
         entityManager.createNativeQuery(
                         "SELECT set_config('app.usuario_atual', :userId, true)")
                 .setParameter("userId", userId.toString())

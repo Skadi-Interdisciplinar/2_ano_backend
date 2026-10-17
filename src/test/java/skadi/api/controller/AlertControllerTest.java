@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.core.MethodParameter;
@@ -131,7 +132,7 @@ class AlertControllerTest {
 
     @Test
     void recognize_returnsNoContent() throws Exception {
-        doNothing().when(service).recognize(1, 7);
+        doNothing().when(service).recognize(1, user);
 
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities()));
@@ -139,6 +140,17 @@ class AlertControllerTest {
         mockMvc.perform(patch("/alerts/1/recognize")
                 )
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void recognize_returnsForbiddenWhenUserCannotRecognizeAlert() throws Exception {
+        String message = "Somente usuários vinculados ao CD do alerta podem reconhecê-lo.";
+        org.mockito.Mockito.doThrow(new AccessDeniedException(message))
+                .when(service).recognize(1, user);
+
+        mockMvc.perform(patch("/alerts/1/recognize"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value(message));
     }
 
     private AlertResponse alert(AlertStatus status) {
