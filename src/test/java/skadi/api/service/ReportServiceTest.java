@@ -44,12 +44,13 @@ class ReportServiceTest {
 
     @Mock private ReportRepository reportRepository;
     @Mock private SignatureRepository signatureRepository;
+    @Mock private AuditUserContext auditUserContext;
 
     private ReportService service;
 
     @BeforeEach
     void setUp() {
-        service = new ReportService(reportRepository, signatureRepository);
+        service = new ReportService(reportRepository, signatureRepository, auditUserContext);
     }
 
     @Test
@@ -62,6 +63,8 @@ class ReportServiceTest {
         });
 
         ReportResponse response = service.create(request, AUTHOR_ID);
+
+        verifyAuditUser(AUTHOR_ID);
 
         ArgumentCaptor<Report> captor = ArgumentCaptor.forClass(Report.class);
         verify(reportRepository).save(captor.capture());
@@ -148,6 +151,7 @@ class ReportServiceTest {
 
         ReportResponse result = service.update(REPORT_ID, request, AUTHOR_ID);
 
+        verifyAuditUser(AUTHOR_ID);
         assertEquals("conteúdo atualizado", report.getContent());
         assertEquals(sha256("conteúdo atualizado"), report.getContentHash());
         assertEquals(PERIOD_START.plusDays(1), report.getPeriodStart());
@@ -230,6 +234,7 @@ class ReportServiceTest {
 
         service.delete(REPORT_ID, AUTHOR_ID);
 
+        verifyAuditUser(AUTHOR_ID);
         verify(signatureRepository).existsByReportId(REPORT_ID);
         verify(reportRepository).delete(report);
     }
@@ -278,6 +283,7 @@ class ReportServiceTest {
 
         ReportResponse result = service.updateStatus(REPORT_ID, ReportStatus.ARQUIVADO, AUTHOR_ID);
 
+        verifyAuditUser(AUTHOR_ID);
         assertEquals(ReportStatus.ARQUIVADO, report.getStatus());
         assertEquals(ReportStatus.ARQUIVADO, result.status());
     }
@@ -376,5 +382,9 @@ class ReportServiceTest {
         assertEquals(report.getPeriodEnd(), response.periodEnd());
         assertEquals(report.getStatus(), response.status());
         assertEquals(report.getContent(), response.content());
+    }
+
+    private void verifyAuditUser(Integer userId) {
+        verify(auditUserContext).setCurrentUser(userId);
     }
 }

@@ -16,6 +16,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class NotificationService {
     private final NotificationRepository repository;
+    private final AuditUserContext auditUserContext;
 
     public List<NotificationResponse> findAllByUserId(Long userId) {
         return repository.findAllByUserIdOrderBySentAtDesc(userId).stream()
@@ -31,6 +32,7 @@ public class NotificationService {
     public NotificationResponse markAsRead(Integer id, Long userId) {
         AlertNotification notification = findNotification(id, userId);
         if (notification.getReadAt() == null) {
+            auditUserContext.setCurrentUser(userId);
             notification.setReadAt(LocalDateTime.now());
             notification = repository.save(notification);
         }
