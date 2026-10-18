@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import skadi.api.dto.TemperatureReadingRequest;
@@ -18,34 +19,32 @@ import skadi.api.exceptions.CurrentTemperatureNotFoundException;
 import skadi.api.model.User;
 import skadi.api.service.TemperatureReadingService;
 
-import java.net.URI;
 import java.time.OffsetDateTime;
 import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/readings")
 public class TemperatureReadingController {
 
     private final TemperatureReadingService service;
 
-    @PostMapping("/reading")
+    @PostMapping
     public ResponseEntity<TemperatureReadingResponse> publish(
             @Valid @RequestBody TemperatureReadingRequest request
     ) {
         TemperatureReadingResponse response = service.publish(request);
-        return ResponseEntity.accepted()
-                .location(URI.create("/reading/" + response.eventId()))
-                .body(response);
+        return ResponseEntity.accepted().body(response);
     }
 
-    @GetMapping("/readings")
+    @GetMapping
     public ResponseEntity<List<TemperatureReadingView>> findAll(
             @AuthenticationPrincipal User user
     ) {
         return ResponseEntity.ok(service.findAll(user.getCdId(), user.getNivelAcesso()));
     }
 
-    @GetMapping("/readings/{readingId}")
+    @GetMapping("/{readingId}")
     public ResponseEntity<TemperatureReadingView> findById(
             @PathVariable Integer readingId,
             @AuthenticationPrincipal User user
@@ -53,7 +52,7 @@ public class TemperatureReadingController {
         return ResponseEntity.ok(service.findById(readingId, user.getCdId(), user.getNivelAcesso()));
     }
 
-    @GetMapping("/readings/cold-rooms/{coldRoomId}")
+    @GetMapping("/cold-rooms/{coldRoomId}")
     public ResponseEntity<List<TemperatureReadingView>> findByColdRoom(
             @PathVariable Long coldRoomId,
             @AuthenticationPrincipal User user
@@ -62,7 +61,7 @@ public class TemperatureReadingController {
                 coldRoomId, user.getCdId(), user.getNivelAcesso(), null, null));
     }
 
-    @GetMapping("/readings/cold-rooms/{coldRoomId}/current-temperature")
+    @GetMapping("/cold-rooms/{coldRoomId}/current-temperature")
     public ResponseEntity<TemperatureReadingView> findCurrentByColdRoom(
             @PathVariable Long coldRoomId,
             @AuthenticationPrincipal User user
@@ -72,7 +71,7 @@ public class TemperatureReadingController {
                 .orElseThrow(() -> new CurrentTemperatureNotFoundException(coldRoomId));
     }
 
-    @GetMapping("/readings/cold-rooms/{coldRoomId}/temperature-history")
+    @GetMapping("/cold-rooms/{coldRoomId}/temperature-history")
     public ResponseEntity<List<TemperatureReadingView>> findHistoryByColdRoom(
             @PathVariable Long coldRoomId,
             @AuthenticationPrincipal User user,

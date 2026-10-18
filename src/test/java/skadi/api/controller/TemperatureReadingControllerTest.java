@@ -79,7 +79,7 @@ class TemperatureReadingControllerTest {
                 OffsetDateTime.parse("2026-10-03T18:00:00-03:00")
         ));
 
-        mockMvc.perform(post("/reading")
+        mockMvc.perform(post("/readings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -96,7 +96,7 @@ class TemperatureReadingControllerTest {
 
     @Test
     void publish_returns400WhenRequiredFieldIsMissing() throws Exception {
-        mockMvc.perform(post("/reading")
+        mockMvc.perform(post("/readings")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
