@@ -21,7 +21,6 @@ public class AlertService {
 
     private final AlertRepository repository;
     private final EntityManager entityManager;
-    private final AuditUserContext auditUserContext;
 
     public List<AlertResponse> findAll() {
         return findAll(null);
@@ -76,7 +75,10 @@ public class AlertService {
         }
 
         Integer userId = Math.toIntExact(user.getId());
-        auditUserContext.setCurrentUser(userId);
+        entityManager.createNativeQuery(
+                        "SELECT set_config('app.usuario_atual', :userId, true)")
+                .setParameter("userId", userId.toString())
+                .getSingleResult();
 
         entityManager.createNativeQuery("CALL sp_reconhecer_alerta(:alertId, :userId)")
                 .setParameter("alertId", alertId)

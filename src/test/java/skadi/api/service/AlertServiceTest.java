@@ -33,13 +33,12 @@ import static org.mockito.Mockito.when;
 class AlertServiceTest {
     @Mock private AlertRepository repository;
     @Mock private EntityManager entityManager;
-    @Mock private AuditUserContext auditUserContext;
     @Mock private Query query;
     private AlertService service;
 
     @BeforeEach
     void setUp() {
-        service = new AlertService(repository, entityManager, auditUserContext);
+        service = new AlertService(repository, entityManager);
     }
 
     @Test
@@ -90,6 +89,11 @@ class AlertServiceTest {
         User user = user(7L, NivelAcesso.OPERADOR, 1L);
         when(repository.findById(1)).thenReturn(Optional.of(alert(AlertStatus.ATIVO)));
         when(repository.belongsToDistributionCenter(1, 1)).thenReturn(true);
+        when(entityManager.createNativeQuery(
+                "SELECT set_config('app.usuario_atual', :userId, true)"))
+                .thenReturn(query);
+        when(query.setParameter("userId", "7")).thenReturn(query);
+        when(query.getSingleResult()).thenReturn("7");
         when(entityManager.createNativeQuery("CALL sp_reconhecer_alerta(:alertId, :userId)"))
                 .thenReturn(query);
         when(query.setParameter("alertId", 1)).thenReturn(query);
@@ -97,7 +101,9 @@ class AlertServiceTest {
 
         service.recognize(1, user);
 
-        verify(auditUserContext).setCurrentUser(7);
+        verify(entityManager).createNativeQuery(
+                "SELECT set_config('app.usuario_atual', :userId, true)");
+        verify(query).setParameter("userId", "7");
         verify(query).executeUpdate();
     }
 

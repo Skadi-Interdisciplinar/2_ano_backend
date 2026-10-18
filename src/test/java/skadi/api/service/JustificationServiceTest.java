@@ -1,5 +1,7 @@
 package skadi.api.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,12 +30,13 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class JustificationServiceTest {
     @Mock private JustificationRepository repository;
-    @Mock private AuditUserContext auditUserContext;
+    @Mock private EntityManager entityManager;
+    @Mock private Query query;
     private JustificationService service;
 
     @BeforeEach
     void setUp() {
-        service = new JustificationService(repository, auditUserContext);
+        service = new JustificationService(repository, entityManager);
     }
 
     @Test
@@ -59,6 +62,7 @@ class JustificationServiceTest {
     void create_savesJustificationForHandlingAndSetsTimestamp() {
         JustificationRequest request = new JustificationRequest("Power failure", "Temporary outage");
         when(repository.existsByAlertHandlingId(5)).thenReturn(false);
+        mockAuditUser(7);
         when(repository.save(any(Justification.class))).thenAnswer(invocation -> {
             Justification saved = invocation.getArgument(0);
             saved.setId(20);
@@ -67,7 +71,6 @@ class JustificationServiceTest {
 
         JustificationResponse result = service.create(5, request, 7);
 
-        verify(auditUserContext).setCurrentUser(7);
         ArgumentCaptor<Justification> captor = ArgumentCaptor.forClass(Justification.class);
         verify(repository).save(captor.capture());
         assertEquals(5, captor.getValue().getAlertHandlingId());
@@ -91,11 +94,11 @@ class JustificationServiceTest {
         Justification justification = justification(20, 5, "Old reason", "Old description");
         when(repository.findByAlertHandlingId(5)).thenReturn(Optional.of(justification));
         when(repository.save(justification)).thenReturn(justification);
+        mockAuditUser(7);
 
         JustificationResponse result = service.update(5,
                 new JustificationPatchRequest("New reason", "New description"), 7);
 
-        verify(auditUserContext).setCurrentUser(7);
         assertEquals("New reason", result.reason());
         assertEquals("New description", result.description());
         assertEquals(5, result.alertHandlingId());
@@ -107,11 +110,11 @@ class JustificationServiceTest {
         Justification justification = justification(20, 5, "Old reason", "Keep this description");
         when(repository.findByAlertHandlingId(5)).thenReturn(Optional.of(justification));
         when(repository.save(justification)).thenReturn(justification);
+        mockAuditUser(7);
 
         JustificationResponse result = service.update(5,
                 new JustificationPatchRequest("New reason", null), 7);
 
-        verify(auditUserContext).setCurrentUser(7);
         assertEquals("New reason", result.reason());
         assertEquals("Keep this description", result.description());
         verify(repository).save(justification);
@@ -134,6 +137,13 @@ class JustificationServiceTest {
     private Justification justification(Integer id, Integer handlingId, String reason, String description) {
         return new Justification(id, handlingId, reason, description,
                 LocalDateTime.of(2026, 10, 7, 10, 0));
+    }
+
+    private void mockAuditUser(Integer userId) {
+        when(entityManager.createNativeQuery(
+                "SELECT set_config('app.usuario_atual', :userId, true)")).thenReturn(query);
+        when(query.setParameter("userId", userId.toString())).thenReturn(query);
+        when(query.getSingleResult()).thenReturn(userId.toString());
     }
 
     private void assertResponse(JustificationResponse response, Justification justification) {

@@ -25,12 +25,11 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class NotificationServiceTest {
     @Mock private NotificationRepository repository;
-    @Mock private AuditUserContext auditUserContext;
     private NotificationService service;
 
     @BeforeEach
     void setUp() {
-        service = new NotificationService(repository, auditUserContext);
+        service = new NotificationService(repository);
     }
 
     @Test
@@ -73,7 +72,6 @@ class NotificationServiceTest {
 
         NotificationResponse result = service.markAsRead(8, 12L);
 
-        verify(auditUserContext).setCurrentUser(12L);
         assertNotNull(result.readAt());
         assertEquals(notification.getReadAt(), result.readAt());
         verify(repository).save(notification);

@@ -39,13 +39,12 @@ class SignatureServiceTest {
 
     @Mock private ReportService reportService;
     @Mock private SignatureRepository repository;
-    @Mock private AuditUserContext auditUserContext;
 
     private SignatureService service;
 
     @BeforeEach
     void setUp() {
-        service = new SignatureService(reportService, repository, new SignatureVerificationService(), auditUserContext);
+        service = new SignatureService(reportService, repository, new SignatureVerificationService());
     }
 
     @Test
@@ -60,8 +59,6 @@ class SignatureServiceTest {
         });
 
         SignatureResponse result = service.create(4, request, 7);
-
-        verify(auditUserContext).setCurrentUser(7);
 
         ArgumentCaptor<Signature> captor = ArgumentCaptor.forClass(Signature.class);
         verify(repository).save(captor.capture());

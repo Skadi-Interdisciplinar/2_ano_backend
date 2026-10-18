@@ -25,11 +25,9 @@ public class SignatureService {
     private final ReportService reportService;
     private final SignatureRepository repository;
     private final SignatureVerificationService verificationService;
-    private final AuditUserContext auditUserContext;
 
     @Transactional
     public SignatureResponse create(Integer reportId, SignatureRequest request, Integer userId) {
-        auditUserContext.setCurrentUser(userId);
         Report report = reportService.findReportForAuthor(reportId, userId);
         if (repository.existsByReportId(reportId)) {
             throw new SignatureAlreadyExistsException(reportId);
