@@ -36,6 +36,7 @@ class AlertServiceTest {
     @Mock private DistributionCenterAccessService accessService;
     @Mock private AuditUserContext auditUserContext;
     @Mock private EntityManager entityManager;
+    @Mock private AuditUserContext auditUserContext;
     @Mock private Query query;
     private AlertService service;
 

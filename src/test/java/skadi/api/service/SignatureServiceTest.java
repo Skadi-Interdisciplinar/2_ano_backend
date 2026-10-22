@@ -62,6 +62,8 @@ class SignatureServiceTest {
 
         SignatureResponse result = service.create(4, request, 7);
 
+        verify(auditUserContext).setCurrentUser(7);
+
         ArgumentCaptor<Signature> captor = ArgumentCaptor.forClass(Signature.class);
         verify(repository).save(captor.capture());
         Signature saved = captor.getValue();

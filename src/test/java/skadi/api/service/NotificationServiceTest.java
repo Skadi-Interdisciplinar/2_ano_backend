@@ -73,6 +73,7 @@ class NotificationServiceTest {
 
         NotificationResponse result = service.markAsRead(8, 12L);
 
+        verify(auditUserContext).setCurrentUser(12L);
         assertNotNull(result.readAt());
         assertEquals(notification.getReadAt(), result.readAt());
         verify(auditUserContext).setCurrentUser(12L);

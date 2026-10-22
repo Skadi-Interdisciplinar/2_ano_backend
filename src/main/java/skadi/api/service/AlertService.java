@@ -23,6 +23,7 @@ public class AlertService {
     private final DistributionCenterAccessService accessService;
     private final AuditUserContext auditUserContext;
     private final EntityManager entityManager;
+    private final AuditUserContext auditUserContext;
 
     public List<AlertResponse> findAll(Integer coldRoomId, User user) {
         List<Alert> alerts = coldRoomId == null
