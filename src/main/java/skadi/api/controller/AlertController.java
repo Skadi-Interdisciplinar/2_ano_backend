@@ -24,19 +24,23 @@ public class AlertController {
 
     @GetMapping
     public ResponseEntity<List<AlertResponse>> findAll(
-            @RequestParam(required = false) Integer coldRoomId) {
-        return ResponseEntity.ok(service.findAll(coldRoomId));
+            @RequestParam(required = false) Integer coldRoomId,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(service.findAll(coldRoomId, user));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AlertResponse> findById(@PathVariable Integer id) {
-        return ResponseEntity.ok(service.findById(id));
+    public ResponseEntity<AlertResponse> findById(
+            @PathVariable Integer id,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(service.findById(id, user));
     }
 
     @GetMapping("/history")
     public ResponseEntity<List<AlertResponse>> findHistory(
-            @RequestParam(required = false) Integer coldRoomId) {
-        return ResponseEntity.ok(service.findHistory(coldRoomId));
+            @RequestParam(required = false) Integer coldRoomId,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(service.findHistory(coldRoomId, user));
     }
 
     @PatchMapping("/{id}/recognize")

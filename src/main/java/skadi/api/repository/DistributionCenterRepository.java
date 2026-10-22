@@ -14,4 +14,6 @@ public interface DistributionCenterRepository extends JpaRepository<Distribution
 
     boolean existsByCnpj(String cnpj);
 
+    boolean existsByCnpjAndIdNot(String cnpj, Long id);
+
 }

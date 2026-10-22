@@ -14,10 +14,15 @@ public record CategoryRequest(
         @Size(max = 150, message = "O nome deve ter no máximo 150 caracteres")
         String name,
 
-        @NotNull(message = "A temperatura ideal é obrigatória")
+        @NotNull(message = "A temperatura mínima é obrigatória")
         @Digits(integer = 3, fraction = 2,
-                message = "A temperatura ideal deve ter até 3 dígitos inteiros e 2 decimais")
-        BigDecimal idealTemperature,
+                message = "A temperatura mínima deve ter até 3 dígitos inteiros e 2 decimais")
+        BigDecimal minimumTemperature,
+
+        @NotNull(message = "A temperatura máxima é obrigatória")
+        @Digits(integer = 3, fraction = 2,
+                message = "A temperatura máxima deve ter até 3 dígitos inteiros e 2 decimais")
+        BigDecimal maximumTemperature,
 
         @NotNull(message = "A vida útil em horas é obrigatória")
         @DecimalMin(value = "0.01", message = "A vida útil deve ser maior que zero")

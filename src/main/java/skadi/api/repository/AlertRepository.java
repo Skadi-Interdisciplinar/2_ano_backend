@@ -6,6 +6,7 @@ import org.springframework.data.repository.query.Param;
 import skadi.api.model.Alert;
 import skadi.api.enums.AlertStatus;
 import java.util.List;
+import java.util.Optional;
 
 public interface AlertRepository extends JpaRepository<Alert, Integer> {
 
@@ -33,4 +34,12 @@ public interface AlertRepository extends JpaRepository<Alert, Integer> {
             @Param("alertId") Integer alertId,
             @Param("distributionCenterId") Integer distributionCenterId
     );
+
+    @Query(value = """
+            SELECT c.cod_cd
+            FROM tb_alerta a
+            JOIN tb_camara_frigorifica c ON c.id = a.cod_camara_frigorifica
+            WHERE a.id = :alertId
+            """, nativeQuery = true)
+    Optional<Long> findDistributionCenterIdByAlertId(@Param("alertId") Integer alertId);
 }

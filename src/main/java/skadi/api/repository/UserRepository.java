@@ -3,6 +3,7 @@ package skadi.api.repository;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import skadi.api.model.User;
+import skadi.api.enums.NivelAcesso;
 import java.util.Optional;
 
 @Repository
@@ -21,6 +22,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByUsername(String username);
 
     Optional<User> findByUsername(String username);
+
+    boolean existsByNivelAcessoAndCd_Id(NivelAcesso nivelAcesso, Long distributionCenterId);
+
+    boolean existsByIdAndNivelAcessoAndCd_Id(Long id, NivelAcesso nivelAcesso, Long distributionCenterId);
 
 
 

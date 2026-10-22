@@ -7,9 +7,12 @@ import org.springframework.transaction.annotation.Transactional;
 import skadi.api.dto.CategoryRequest;
 import skadi.api.dto.CategoryResponse;
 import skadi.api.exceptions.CategoryAlreadyExistsException;
+import skadi.api.exceptions.CategoryInvalidTemperatureRangeException;
 import skadi.api.exceptions.CategoryNotFoundException;
 import skadi.api.mapper.CategoryMapper;
 import skadi.api.model.Category;
+import skadi.api.model.User;
+import skadi.api.enums.NivelAcesso;
 import skadi.api.repository.CategoryRepository;
 
 import java.util.List;
@@ -19,14 +22,20 @@ import java.util.List;
 public class CategoryService {
 
     private final CategoryRepository repository;
+    private final DistributionCenterAccessService accessService;
+    private final AuditUserContext auditUserContext;
 
     @Transactional
-    public CategoryResponse create(CategoryRequest request) {
+    public CategoryResponse create(CategoryRequest request, User user) {
+        accessService.requireRole(user, NivelAcesso.ADMIN,
+                "Somente ADMIN pode cadastrar categorias.");
+        validateTemperatureRange(request);
         String name = request.name().trim();
         if (repository.existsByNameIgnoreCase(name)) {
             throw new CategoryAlreadyExistsException("Já existe uma categoria com esse nome");
         }
 
+        auditUserContext.setCurrentUser(user);
         Category category = CategoryMapper.fromRequest(request);
         return CategoryMapper.toResponse(repository.save(category));
     }
@@ -45,20 +54,27 @@ public class CategoryService {
     }
 
     @Transactional
-    public CategoryResponse update(Long id, CategoryRequest request) {
+    public CategoryResponse update(Long id, CategoryRequest request, User user) {
+        accessService.requireRole(user, NivelAcesso.ADMIN,
+                "Somente ADMIN pode alterar categorias.");
         Category category = findEntityById(id);
+        validateTemperatureRange(request);
         String name = request.name().trim();
         if (repository.existsByNameIgnoreCaseAndIdNot(name, id)) {
             throw new CategoryAlreadyExistsException("Já existe outra categoria com esse nome");
         }
 
+        auditUserContext.setCurrentUser(user);
         CategoryMapper.update(category, request);
         return CategoryMapper.toResponse(repository.save(category));
     }
 
     @Transactional
-    public void delete(Long id) {
+    public void delete(Long id, User user) {
+        accessService.requireRole(user, NivelAcesso.ADMIN,
+                "Somente ADMIN pode excluir categorias.");
         Category category = findEntityById(id);
+        auditUserContext.setCurrentUser(user);
         repository.delete(category);
         repository.flush();
     }
@@ -67,5 +83,11 @@ public class CategoryService {
         return repository.findById(id)
                 .orElseThrow(() -> new CategoryNotFoundException(
                         "Categoria não encontrada com o id " + id));
+    }
+
+    private void validateTemperatureRange(CategoryRequest request) {
+        if (request.minimumTemperature().compareTo(request.maximumTemperature()) >= 0) {
+            throw new CategoryInvalidTemperatureRangeException();
+        }
     }
 }

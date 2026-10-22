@@ -45,7 +45,7 @@ class CategoryControllerTest {
 
     @Test
     void createReturns201AndCreatedCategory() throws Exception {
-        when(service.create(any())).thenReturn(category());
+        when(service.create(any(), any())).thenReturn(category());
 
         mockMvc.perform(post("/categories")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -54,7 +54,8 @@ class CategoryControllerTest {
                 .andExpect(header().string("Location", "/categories/1"))
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.name").value("Congelados"))
-                .andExpect(jsonPath("$.idealTemperature").value(-18.00))
+                .andExpect(jsonPath("$.minimumTemperature").value(-20.00))
+                .andExpect(jsonPath("$.maximumTemperature").value(-16.00))
                 .andExpect(jsonPath("$.shelfLifeHours").value(48.00));
     }
 
@@ -65,7 +66,8 @@ class CategoryControllerTest {
                         .content("""
                                 {
                                   "name": "Congelados",
-                                  "idealTemperature": -18.00,
+                                  "minimumTemperature": -20.00,
+                                  "maximumTemperature": -16.00,
                                   "shelfLifeHours": 0
                                 }
                                 """))
@@ -80,7 +82,8 @@ class CategoryControllerTest {
                         .content("""
                                 {
                                   "name": "Congelados",
-                                  "idealTemperature": -18.00,
+                                  "minimumTemperature": -20.00,
+                                  "maximumTemperature": -16.00,
                                   "shelfLifeHours": 1000.00
                                 }
                                 """))
@@ -108,7 +111,7 @@ class CategoryControllerTest {
 
     @Test
     void updateReturnsUpdatedCategory() throws Exception {
-        when(service.update(eq(1L), any())).thenReturn(category());
+        when(service.update(eq(1L), any(), any())).thenReturn(category());
 
         mockMvc.perform(put("/categories/1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -119,7 +122,7 @@ class CategoryControllerTest {
 
     @Test
     void deleteReturns204() throws Exception {
-        doNothing().when(service).delete(1L);
+        doNothing().when(service).delete(eq(1L), any());
 
         mockMvc.perform(delete("/categories/1"))
                 .andExpect(status().isNoContent());
@@ -129,7 +132,8 @@ class CategoryControllerTest {
         return new CategoryResponse(
                 1L,
                 "Congelados",
-                new BigDecimal("-18.00"),
+                new BigDecimal("-20.00"),
+                new BigDecimal("-16.00"),
                 new BigDecimal("48.00")
         );
     }
@@ -138,7 +142,8 @@ class CategoryControllerTest {
         return """
                 {
                   "name": "Congelados",
-                  "idealTemperature": -18.00,
+                  "minimumTemperature": -20.00,
+                  "maximumTemperature": -16.00,
                   "shelfLifeHours": 48.00
                 }
                 """;

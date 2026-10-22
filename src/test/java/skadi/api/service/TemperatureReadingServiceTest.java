@@ -13,6 +13,7 @@ import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.core.StreamOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import skadi.api.repository.TemperatureReadingRepository;
+import skadi.api.repository.ColdRoomRepository;
 import org.springframework.test.util.ReflectionTestUtils;
 import skadi.api.dto.TemperatureReadingRequest;
 import skadi.api.dto.TemperatureReadingResponse;
@@ -52,11 +53,18 @@ class TemperatureReadingServiceTest {
     @Mock
     private TemperatureReadingRepository repository;
 
+    @Mock
+    private ColdRoomRepository coldRoomRepository;
+
+    @Mock
+    private DistributionCenterAccessService accessService;
+
     private TemperatureReadingService service;
 
     @BeforeEach
     void setUp() {
-        service = new TemperatureReadingService(redisTemplate, repository);
+        service = new TemperatureReadingService(
+                redisTemplate, repository, coldRoomRepository, accessService);
         ReflectionTestUtils.setField(service, "temperatureStream", "skadi:leituras:temperatura");
         ReflectionTestUtils.setField(service, "temperatureRetentionHours", 72L);
     }

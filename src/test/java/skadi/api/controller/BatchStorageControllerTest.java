@@ -45,7 +45,7 @@ class BatchStorageControllerTest {
 
     @Test
     void enterReturns201AndActiveStorage() throws Exception {
-        when(service.enter(org.mockito.ArgumentMatchers.eq(1L), any())).thenReturn(activeStorage());
+        when(service.enter(org.mockito.ArgumentMatchers.eq(1L), any(), any())).thenReturn(activeStorage());
 
         mockMvc.perform(post("/batches/1/storages")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -68,7 +68,7 @@ class BatchStorageControllerTest {
 
     @Test
     void enterReturns409WhenBatchIsAlreadyStored() throws Exception {
-        when(service.enter(org.mockito.ArgumentMatchers.eq(1L), any()))
+        when(service.enter(org.mockito.ArgumentMatchers.eq(1L), any(), any()))
                 .thenThrow(new BatchStorageRuleViolationException("O lote já está armazenado"));
 
         mockMvc.perform(post("/batches/1/storages")
@@ -80,7 +80,7 @@ class BatchStorageControllerTest {
 
     @Test
     void findHistoryReturnsStorages() throws Exception {
-        when(service.findHistory(1L)).thenReturn(List.of(activeStorage()));
+        when(service.findHistory(org.mockito.ArgumentMatchers.eq(1L), any())).thenReturn(List.of(activeStorage()));
 
         mockMvc.perform(get("/batches/1/storages"))
                 .andExpect(status().isOk())
@@ -91,7 +91,7 @@ class BatchStorageControllerTest {
     void moveReturnsDestinationStorage() throws Exception {
         BatchStorageResponse moved = response(11L, 4L, null);
         when(service.move(org.mockito.ArgumentMatchers.eq(1L),
-                org.mockito.ArgumentMatchers.eq(10L), any())).thenReturn(moved);
+                org.mockito.ArgumentMatchers.eq(10L), any(), any())).thenReturn(moved);
 
         mockMvc.perform(put("/batches/1/storages/10")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -105,7 +105,8 @@ class BatchStorageControllerTest {
     @Test
     void exitReturnsClosedStorage() throws Exception {
         LocalDateTime exitDate = LocalDateTime.of(2026, 10, 16, 10, 0);
-        when(service.exit(1L, 10L)).thenReturn(response(10L, 3L, exitDate));
+        when(service.exit(org.mockito.ArgumentMatchers.eq(1L),
+                org.mockito.ArgumentMatchers.eq(10L), any())).thenReturn(response(10L, 3L, exitDate));
 
         mockMvc.perform(patch("/batches/1/storages/10/exit"))
                 .andExpect(status().isOk())
@@ -115,7 +116,9 @@ class BatchStorageControllerTest {
 
     @Test
     void exitReturns404ForUnknownStorage() throws Exception {
-        when(service.exit(1L, 99L)).thenThrow(new BatchStorageNotFoundException(99L, 1L));
+        when(service.exit(org.mockito.ArgumentMatchers.eq(1L),
+                org.mockito.ArgumentMatchers.eq(99L), any()))
+                .thenThrow(new BatchStorageNotFoundException(99L, 1L));
 
         mockMvc.perform(patch("/batches/1/storages/99/exit"))
                 .andExpect(status().isNotFound())

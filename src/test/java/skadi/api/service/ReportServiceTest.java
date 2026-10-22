@@ -44,12 +44,13 @@ class ReportServiceTest {
 
     @Mock private ReportRepository reportRepository;
     @Mock private SignatureRepository signatureRepository;
+    @Mock private AuditUserContext auditUserContext;
 
     private ReportService service;
 
     @BeforeEach
     void setUp() {
-        service = new ReportService(reportRepository, signatureRepository);
+        service = new ReportService(reportRepository, signatureRepository, auditUserContext);
     }
 
     @Test

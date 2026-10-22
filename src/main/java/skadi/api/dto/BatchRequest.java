@@ -20,6 +20,10 @@ public record BatchRequest(
         LocalDate manufacturingDate,
 
         @NotNull(message = "A data de validade é obrigatória")
-        LocalDate expirationDate
+        LocalDate expirationDate,
+
+        @NotNull(message = "A câmara frigorífica inicial é obrigatória")
+        @Positive(message = "O id da câmara frigorífica deve ser positivo")
+        Long coldRoomId
 ) {
 }

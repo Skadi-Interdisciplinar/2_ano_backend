@@ -67,7 +67,7 @@ class JustificationControllerTest {
 
     @Test
     void findByAlertHandlingId_returnsJustification() throws Exception {
-        when(service.findByAlertHandlingId(5)).thenReturn(justification());
+        when(service.findByAlertHandlingId(eq(5), any(User.class))).thenReturn(justification());
 
         mockMvc.perform(get("/alert-handlings/5/justification"))
                 .andExpect(status().isOk())
@@ -78,7 +78,8 @@ class JustificationControllerTest {
 
     @Test
     void findByAlertHandlingId_returnsNotFoundWhenNoneExists() throws Exception {
-        when(service.findByAlertHandlingId(5)).thenThrow(new JustificationNotFoundException(5));
+        when(service.findByAlertHandlingId(eq(5), any(User.class)))
+                .thenThrow(new JustificationNotFoundException(5));
 
         mockMvc.perform(get("/alert-handlings/5/justification"))
                 .andExpect(status().isNotFound());
@@ -86,7 +87,7 @@ class JustificationControllerTest {
 
     @Test
     void create_returnsCreatedJustification() throws Exception {
-        when(service.create(eq(5), any(JustificationRequest.class), eq(7)))
+        when(service.create(eq(5), any(JustificationRequest.class), any(User.class)))
                 .thenReturn(justification());
 
         mockMvc.perform(post("/alert-handlings/5/justification")
@@ -102,7 +103,7 @@ class JustificationControllerTest {
 
     @Test
     void create_returnsConflictWhenHandlingAlreadyHasJustification() throws Exception {
-        when(service.create(eq(5), any(JustificationRequest.class), eq(7)))
+        when(service.create(eq(5), any(JustificationRequest.class), any(User.class)))
                 .thenThrow(new JustificationAlreadyExistsException(5));
 
         mockMvc.perform(post("/alert-handlings/5/justification")
@@ -149,7 +150,7 @@ class JustificationControllerTest {
     void update_changesJustification() throws Exception {
         JustificationResponse updated = new JustificationResponse(20, 5,
                 "New reason", "New description", justification().createdAt());
-        when(service.update(eq(5), any(JustificationPatchRequest.class), eq(7)))
+        when(service.update(eq(5), any(JustificationPatchRequest.class), any(User.class)))
                 .thenReturn(updated);
 
         mockMvc.perform(patch("/alert-handlings/5/justification")
@@ -164,7 +165,7 @@ class JustificationControllerTest {
 
     @Test
     void update_acceptsPartialRequest() throws Exception {
-        when(service.update(eq(5), any(JustificationPatchRequest.class), eq(7)))
+        when(service.update(eq(5), any(JustificationPatchRequest.class), any(User.class)))
                 .thenReturn(new JustificationResponse(20, 5,
                         "New reason", "Existing description", justification().createdAt()));
 
@@ -180,7 +181,7 @@ class JustificationControllerTest {
 
     @Test
     void update_returnsConflictWhenNoFieldsAreProvided() throws Exception {
-        when(service.update(eq(5), any(JustificationPatchRequest.class), eq(7)))
+        when(service.update(eq(5), any(JustificationPatchRequest.class), any(User.class)))
                 .thenThrow(new JustificationRuleViolationException("Informe ao menos um campo para atualizar."));
 
         mockMvc.perform(patch("/alert-handlings/5/justification")
@@ -201,7 +202,7 @@ class JustificationControllerTest {
 
     @Test
     void update_returnsNotFoundWhenHandlingHasNoJustification() throws Exception {
-        when(service.update(eq(5), any(JustificationPatchRequest.class), eq(7)))
+        when(service.update(eq(5), any(JustificationPatchRequest.class), any(User.class)))
                 .thenThrow(new JustificationNotFoundException(5));
 
         mockMvc.perform(patch("/alert-handlings/5/justification")

@@ -23,6 +23,7 @@ import skadi.api.exceptions.JustificationRuleViolationException;
 import skadi.api.exceptions.SignatureAlreadyExistsException;
 import skadi.api.exceptions.SignatureNotFoundException;
 import skadi.api.exceptions.CategoryAlreadyExistsException;
+import skadi.api.exceptions.CategoryInvalidTemperatureRangeException;
 import skadi.api.exceptions.CategoryNotFoundException;
 import skadi.api.exceptions.BatchAlreadyExistsException;
 import skadi.api.exceptions.BatchInvalidDatesException;
@@ -106,7 +107,8 @@ public class GlobalExceptionHandler {
                 .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), Timestamp.from(Instant.now())));
     }
 
-    @ExceptionHandler(ColdRoomInvalidTemperatureRangeException.class)
+    @ExceptionHandler({ColdRoomInvalidTemperatureRangeException.class,
+            CategoryInvalidTemperatureRangeException.class})
     public ResponseEntity<ErrorResponse> handleInvalidColdRoomTemperatureRange(
             ColdRoomInvalidTemperatureRangeException ex
     ) {

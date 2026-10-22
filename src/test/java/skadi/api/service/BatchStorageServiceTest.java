@@ -20,6 +20,8 @@ import skadi.api.model.Category;
 import skadi.api.model.ColdRoom;
 import skadi.api.model.DistributionCenter;
 import skadi.api.model.Thermometer;
+import skadi.api.model.User;
+import skadi.api.enums.NivelAcesso;
 import skadi.api.repository.BatchRepository;
 import skadi.api.repository.BatchStorageRepository;
 import skadi.api.repository.ColdRoomRepository;
@@ -27,6 +29,7 @@ import skadi.api.repository.ColdRoomRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
@@ -52,11 +55,15 @@ class BatchStorageServiceTest {
     @Mock
     private ColdRoomRepository coldRoomRepository;
 
+    @Mock private DistributionCenterAccessService accessService;
+    @Mock private AuditUserContext auditUserContext;
+
     private BatchStorageService service;
 
     @BeforeEach
     void setUp() {
-        service = new BatchStorageService(storageRepository, batchRepository, coldRoomRepository);
+        service = new BatchStorageService(storageRepository, batchRepository, coldRoomRepository,
+                accessService, auditUserContext);
     }
 
     @Test
@@ -70,7 +77,7 @@ class BatchStorageServiceTest {
             return storage;
         });
 
-        BatchStorageResponse response = service.enter(1L, new BatchStorageRequest(3L));
+        BatchStorageResponse response = service.enter(1L, new BatchStorageRequest(3L), operator());
 
         ArgumentCaptor<BatchStorage> captor = ArgumentCaptor.forClass(BatchStorage.class);
         verify(storageRepository).saveAndFlush(captor.capture());
@@ -88,7 +95,7 @@ class BatchStorageServiceTest {
                 .thenReturn(Optional.of(activeStorage(10L, coldRoom(3L))));
 
         assertThrows(BatchStorageRuleViolationException.class,
-                () -> service.enter(1L, new BatchStorageRequest(4L)));
+                () -> service.enter(1L, new BatchStorageRequest(4L), operator()));
 
         verify(coldRoomRepository, never()).findById(any());
         verify(storageRepository, never()).saveAndFlush(any());
@@ -99,7 +106,7 @@ class BatchStorageServiceTest {
         when(batchRepository.findByIdForUpdate(99L)).thenReturn(Optional.empty());
 
         assertThrows(BatchNotFoundException.class,
-                () -> service.enter(99L, new BatchStorageRequest(3L)));
+                () -> service.enter(99L, new BatchStorageRequest(3L), operator()));
     }
 
     @Test
@@ -109,7 +116,7 @@ class BatchStorageServiceTest {
         when(coldRoomRepository.findById(99L)).thenReturn(Optional.empty());
 
         assertThrows(ColdRoomNotFoundException.class,
-                () -> service.enter(1L, new BatchStorageRequest(99L)));
+                () -> service.enter(1L, new BatchStorageRequest(99L), operator()));
     }
 
     @Test
@@ -122,7 +129,7 @@ class BatchStorageServiceTest {
 
         BatchStorageRuleViolationException exception = assertThrows(
                 BatchStorageRuleViolationException.class,
-                () -> service.enter(1L, new BatchStorageRequest(3L))
+                () -> service.enter(1L, new BatchStorageRequest(3L), operator())
         );
 
         assertEquals(
@@ -136,10 +143,12 @@ class BatchStorageServiceTest {
         BatchStorage closed = activeStorage(9L, coldRoom(3L));
         closed.setExitDate(LocalDateTime.now());
         when(batchRepository.existsById(1L)).thenReturn(true);
+        when(storageRepository.findFirstByBatch_IdOrderByEntryDateAsc(1L))
+                .thenReturn(Optional.of(closed));
         when(storageRepository.findByBatch_IdOrderByEntryDateDesc(1L))
                 .thenReturn(List.of(activeStorage(10L, coldRoom(4L)), closed));
 
-        List<BatchStorageResponse> response = service.findHistory(1L);
+        List<BatchStorageResponse> response = service.findHistory(1L, operator());
 
         assertEquals(2, response.size());
         assertTrue(response.getFirst().active());
@@ -150,7 +159,7 @@ class BatchStorageServiceTest {
     void findHistoryRejectsUnknownBatch() {
         when(batchRepository.existsById(99L)).thenReturn(false);
 
-        assertThrows(BatchNotFoundException.class, () -> service.findHistory(99L));
+        assertThrows(BatchNotFoundException.class, () -> service.findHistory(99L, operator()));
     }
 
     @Test
@@ -167,7 +176,8 @@ class BatchStorageServiceTest {
             return storage;
         });
 
-        BatchStorageResponse response = service.move(1L, 10L, new BatchStorageRequest(4L));
+        BatchStorageResponse response = service.move(
+                1L, 10L, new BatchStorageRequest(4L), operator());
 
         assertEquals(11L, response.id());
         assertEquals(4L, response.coldRoomId());
@@ -183,7 +193,7 @@ class BatchStorageServiceTest {
                 .thenReturn(Optional.of(activeStorage(10L, coldRoom(3L))));
 
         assertThrows(BatchStorageRuleViolationException.class,
-                () -> service.move(1L, 10L, new BatchStorageRequest(3L)));
+                () -> service.move(1L, 10L, new BatchStorageRequest(3L), operator()));
 
         verify(storageRepository, never()).saveAndFlush(any());
     }
@@ -196,7 +206,23 @@ class BatchStorageServiceTest {
         when(storageRepository.findByIdAndBatch_Id(10L, 1L)).thenReturn(Optional.of(storage));
 
         assertThrows(BatchStorageRuleViolationException.class,
-                () -> service.move(1L, 10L, new BatchStorageRequest(4L)));
+                () -> service.move(1L, 10L, new BatchStorageRequest(4L), operator()));
+    }
+
+    @Test
+    void moveRejectsDestinationFromAnotherDistributionCenter() {
+        BatchStorage current = activeStorage(10L, coldRoom(3L, 5L));
+        when(batchRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(batch()));
+        when(storageRepository.findByIdAndBatch_Id(10L, 1L)).thenReturn(Optional.of(current));
+        when(coldRoomRepository.findById(4L)).thenReturn(Optional.of(coldRoom(4L, 6L)));
+
+        BatchStorageRuleViolationException exception = assertThrows(
+                BatchStorageRuleViolationException.class,
+                () -> service.move(1L, 10L, new BatchStorageRequest(4L), operator()));
+
+        assertEquals("O lote não pode ser movimentado entre centros de distribuição diferentes",
+                exception.getMessage());
+        verify(storageRepository, never()).saveAndFlush(any());
     }
 
     @Test
@@ -206,7 +232,7 @@ class BatchStorageServiceTest {
         when(storageRepository.findByIdAndBatch_Id(10L, 1L)).thenReturn(Optional.of(storage));
         when(storageRepository.saveAndFlush(storage)).thenReturn(storage);
 
-        BatchStorageResponse response = service.exit(1L, 10L);
+        BatchStorageResponse response = service.exit(1L, 10L, operator());
 
         assertFalse(response.active());
         assertTrue(response.exitDate().isAfter(response.entryDate()));
@@ -217,7 +243,8 @@ class BatchStorageServiceTest {
         when(batchRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(batch()));
         when(storageRepository.findByIdAndBatch_Id(99L, 1L)).thenReturn(Optional.empty());
 
-        assertThrows(BatchStorageNotFoundException.class, () -> service.exit(1L, 99L));
+        assertThrows(BatchStorageNotFoundException.class,
+                () -> service.exit(1L, 99L, operator()));
     }
 
     private BatchStorage activeStorage(Long id, ColdRoom coldRoom) {
@@ -234,7 +261,8 @@ class BatchStorageServiceTest {
         return new Batch(
                 1L,
                 "LOTE-2026-0015",
-                new Category(2L, "Carne bovina", new BigDecimal("-15.00"), new BigDecimal("72.00")),
+                new Category(2L, "Carne bovina", new BigDecimal("-20.00"),
+                        new BigDecimal("-10.00"), Duration.ofHours(72)),
                 LocalDate.of(2026, 10, 1),
                 LocalDate.of(2026, 10, 30),
                 BatchStatus.ACTIVE
@@ -242,14 +270,24 @@ class BatchStorageServiceTest {
     }
 
     private ColdRoom coldRoom(Long id) {
+        return coldRoom(id, 5L);
+    }
+
+    private ColdRoom coldRoom(Long id, Long distributionCenterId) {
         return new ColdRoom(
                 id,
                 "Câmara " + id,
                 "Corredor A",
                 new BigDecimal("-20.00"),
                 new BigDecimal("-10.00"),
-                new DistributionCenter(5L, "Centro Principal", "12345678000199"),
+                new DistributionCenter(distributionCenterId, "Centro Principal", "12345678000199"),
                 new Thermometer(id + 10, "DHT22")
         );
+    }
+
+    private User operator() {
+        return new User(70L, "Operador", "operador", "12345678901", "op@skadi.com",
+                "senha", NivelAcesso.OPERADOR,
+                new DistributionCenter(5L, "Centro Principal", "12345678000199"), 80);
     }
 }

@@ -47,7 +47,7 @@ class DistributionCenterControllerTest {
 
     @Test
     void insertCd_returns201() throws Exception {
-        when(service.insertCd(any())).thenReturn(new DistributionCenterResponse(1L, "CD Osasco", "12345678901234"));
+        when(service.insertCd(any(), any())).thenReturn(new DistributionCenterResponse(1L, "CD Osasco", "12345678901234"));
 
         mockMvc.perform(post("/cd")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -62,7 +62,7 @@ class DistributionCenterControllerTest {
 
     @Test
     void findAllCD_returns200() throws Exception {
-        when(service.findAllCD()).thenReturn(List.of(
+        when(service.findAllCD(any())).thenReturn(List.of(
                 new DistributionCenterResponse(1L, "CD Osasco", "12345678901234")
         ));
 
@@ -74,7 +74,7 @@ class DistributionCenterControllerTest {
 
     @Test
     void findCDById_returns200() throws Exception {
-        when(service.findCDById(1L)).thenReturn(
+        when(service.findCDById(eq(1L), any())).thenReturn(
                 new DistributionCenterResponse(1L, "CD Osasco", "12345678901234")
         );
 
@@ -86,7 +86,7 @@ class DistributionCenterControllerTest {
 
     @Test
     void findCDById_returns404WhenMissing() throws Exception {
-        when(service.findCDById(99L)).thenThrow(new CdNotFoundException());
+        when(service.findCDById(eq(99L), any())).thenThrow(new CdNotFoundException());
 
         mockMvc.perform(get("/cd/99"))
                 .andExpect(status().isNotFound())
@@ -96,7 +96,7 @@ class DistributionCenterControllerTest {
 
     @Test
     void updateCD_returns200() throws Exception {
-        when(service.updateCD(any(), eq(1L))).thenReturn(
+        when(service.updateCD(any(), eq(1L), any())).thenReturn(
                 new DistributionCenterResponse(1L, "CD Barueri", "12345678901234")
         );
 
@@ -111,7 +111,7 @@ class DistributionCenterControllerTest {
 
     @Test
     void updateCD_returns404WhenMissing() throws Exception {
-        when(service.updateCD(any(), eq(99L))).thenThrow(new CdNotFoundException());
+        when(service.updateCD(any(), eq(99L), any())).thenThrow(new CdNotFoundException());
 
         mockMvc.perform(put("/cd/99")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -124,7 +124,7 @@ class DistributionCenterControllerTest {
 
     @Test
     void updateNameCd_returns200() throws Exception {
-        when(service.updateNameCd(any(DistributionCenterRequestName.class), eq(1L))).thenReturn(
+        when(service.updateNameCd(any(DistributionCenterRequestName.class), eq(1L), any())).thenReturn(
                 new DistributionCenterResponse(1L, "CD Atualizado", "12345678901234")
         );
 
@@ -139,7 +139,7 @@ class DistributionCenterControllerTest {
 
     @Test
     void deleteCd_returns204() throws Exception {
-        doNothing().when(service).deleteCD(1L);
+        doNothing().when(service).deleteCD(eq(1L), any());
 
         mockMvc.perform(delete("/cd/1"))
                 .andExpect(status().isNoContent());
@@ -147,7 +147,8 @@ class DistributionCenterControllerTest {
 
     @Test
     void deleteCd_returns404WhenMissing() throws Exception {
-        doThrow(new CdNotFoundException("Centro de distribuição não existe")).when(service).deleteCD(99L);
+        doThrow(new CdNotFoundException("Centro de distribuição não existe"))
+                .when(service).deleteCD(eq(99L), any());
 
         mockMvc.perform(delete("/cd/99"))
                 .andExpect(status().isNotFound())

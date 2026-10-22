@@ -12,6 +12,8 @@ import skadi.api.dto.ThermometerResponse;
 import skadi.api.exceptions.ThermometerNotFoundException;
 import skadi.api.exceptions.ThermometerRuleViolationException;
 import skadi.api.model.Thermometer;
+import skadi.api.model.User;
+import skadi.api.enums.NivelAcesso;
 import skadi.api.repository.ThermometerRepository;
 
 import java.util.List;
@@ -30,11 +32,14 @@ class ThermometerServiceTest {
     @Mock
     private ThermometerRepository repository;
 
+    @Mock private DistributionCenterAccessService accessService;
+    @Mock private AuditUserContext auditUserContext;
+
     private ThermometerService service;
 
     @BeforeEach
     void setUp() {
-        service = new ThermometerService(repository);
+        service = new ThermometerService(repository, accessService, auditUserContext);
     }
 
     @Test
@@ -45,7 +50,7 @@ class ThermometerServiceTest {
             return thermometer;
         });
 
-        ThermometerResponse response = service.create(new ThermometerRequest("  DHT22  "));
+        ThermometerResponse response = service.create(new ThermometerRequest("  DHT22  "), admin());
 
         ArgumentCaptor<Thermometer> captor = ArgumentCaptor.forClass(Thermometer.class);
         verify(repository).save(captor.capture());
@@ -61,7 +66,7 @@ class ThermometerServiceTest {
                 new Thermometer(2L, "DS18B20")
         ));
 
-        List<ThermometerResponse> response = service.findAll();
+        List<ThermometerResponse> response = service.findAll(superAdmin());
 
         assertEquals(2, response.size());
         assertEquals("DHT22", response.getFirst().model());
@@ -71,7 +76,7 @@ class ThermometerServiceTest {
     void findByIdReturnsThermometer() {
         when(repository.findById(1L)).thenReturn(Optional.of(new Thermometer(1L, "DHT22")));
 
-        ThermometerResponse response = service.findById(1L);
+        ThermometerResponse response = service.findById(1L, admin());
 
         assertEquals(1L, response.id());
         assertEquals("DHT22", response.model());
@@ -81,7 +86,7 @@ class ThermometerServiceTest {
     void findByIdRejectsUnknownId() {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(ThermometerNotFoundException.class, () -> service.findById(99L));
+        assertThrows(ThermometerNotFoundException.class, () -> service.findById(99L, admin()));
     }
 
     @Test
@@ -90,7 +95,7 @@ class ThermometerServiceTest {
         when(repository.findById(1L)).thenReturn(Optional.of(thermometer));
         when(repository.save(thermometer)).thenReturn(thermometer);
 
-        ThermometerResponse response = service.update(1L, new ThermometerRequest("  DHT22  "));
+        ThermometerResponse response = service.update(1L, new ThermometerRequest("  DHT22  "), admin());
 
         assertEquals("DHT22", response.model());
         assertEquals("DHT22", thermometer.getModel());
@@ -103,7 +108,7 @@ class ThermometerServiceTest {
         when(repository.isAssignedToColdRoom(1L)).thenReturn(false);
         when(repository.hasTemperatureReadings(1L)).thenReturn(false);
 
-        service.delete(1L);
+        service.delete(1L, admin());
 
         verify(repository).delete(thermometer);
         verify(repository).flush();
@@ -115,7 +120,7 @@ class ThermometerServiceTest {
         when(repository.findById(1L)).thenReturn(Optional.of(thermometer));
         when(repository.isAssignedToColdRoom(1L)).thenReturn(true);
 
-        assertThrows(ThermometerRuleViolationException.class, () -> service.delete(1L));
+        assertThrows(ThermometerRuleViolationException.class, () -> service.delete(1L, admin()));
 
         verify(repository, never()).delete(any());
     }
@@ -127,8 +132,18 @@ class ThermometerServiceTest {
         when(repository.isAssignedToColdRoom(1L)).thenReturn(false);
         when(repository.hasTemperatureReadings(1L)).thenReturn(true);
 
-        assertThrows(ThermometerRuleViolationException.class, () -> service.delete(1L));
+        assertThrows(ThermometerRuleViolationException.class, () -> service.delete(1L, admin()));
 
         verify(repository, never()).delete(any());
+    }
+
+    private User admin() {
+        return new User(40L, "Admin", "admin", "12345678901", "admin@skadi.com",
+                "senha", NivelAcesso.ADMIN, null, null);
+    }
+
+    private User superAdmin() {
+        return new User(41L, "Root", "root", null, "root@skadi.com",
+                "senha", NivelAcesso.SUPER_ADMIN, null, null);
     }
 }

@@ -39,12 +39,14 @@ class SignatureServiceTest {
 
     @Mock private ReportService reportService;
     @Mock private SignatureRepository repository;
+    @Mock private AuditUserContext auditUserContext;
 
     private SignatureService service;
 
     @BeforeEach
     void setUp() {
-        service = new SignatureService(reportService, repository, new SignatureVerificationService());
+        service = new SignatureService(
+                reportService, repository, new SignatureVerificationService(), auditUserContext);
     }
 
     @Test
