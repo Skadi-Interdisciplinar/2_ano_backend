@@ -33,9 +33,11 @@ public class ReportService {
 
     private final ReportRepository reportRepository;
     private final SignatureRepository signatureRepository;
+    private final AuditUserContext auditUserContext;
 
     @Transactional
     public ReportResponse create(ReportRequest request, Integer userId) {
+        auditUserContext.setCurrentUser(userId);
         validatePeriod(request.periodStart(), request.periodEnd());
 
         Report report = ReportMapper.fromDTO(request);
@@ -79,6 +81,7 @@ public class ReportService {
             throw new ReportRuleViolationException("O conteúdo do relatório não pode ficar em branco.");
         }
 
+        auditUserContext.setCurrentUser(userId);
         Report report = findEditableReport(id, userId);
         java.time.LocalDate periodStart = request.periodStart() != null
                 ? request.periodStart() : report.getPeriodStart();
@@ -95,6 +98,7 @@ public class ReportService {
 
     @Transactional
     public void delete(Integer id, Integer userId) {
+        auditUserContext.setCurrentUser(userId);
         Report report = findEditableReport(id, userId);
         if (signatureRepository.existsByReportId(id)) {
             throw new ReportRuleViolationException("Um relatório com assinaturas não pode ser excluído.");
@@ -104,6 +108,7 @@ public class ReportService {
 
     @Transactional
     public ReportResponse updateStatus(Integer id, ReportStatus requestedStatus, Integer userId) {
+        auditUserContext.setCurrentUser(userId);
         Report report = findReportForAuthor(id, userId);
 
         if (requestedStatus == ARCHIVED) {

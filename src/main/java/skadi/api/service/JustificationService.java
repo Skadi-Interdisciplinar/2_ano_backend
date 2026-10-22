@@ -1,6 +1,5 @@
 package skadi.api.service;
 
-import jakarta.persistence.EntityManager;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -19,7 +18,7 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 public class JustificationService {
     private final JustificationRepository repository;
-    private final EntityManager entityManager;
+    private final AuditUserContext auditUserContext;
 
     public JustificationResponse findByAlertHandlingId(Integer alertHandlingId) {
         return repository.findByAlertHandlingId(alertHandlingId)
@@ -38,7 +37,7 @@ public class JustificationService {
         }
         Justification justification = JustificationMapper.fromDTO(request, alertHandlingId);
         justification.setCreatedAt(LocalDateTime.now());
-        setAuditUser(userId);
+        auditUserContext.setCurrentUser(userId);
         return JustificationMapper.toDTO(repository.save(justification));
     }
 
@@ -55,14 +54,8 @@ public class JustificationService {
         Justification justification = repository.findByAlertHandlingId(alertHandlingId)
                 .orElseThrow(() -> new JustificationNotFoundException(alertHandlingId));
         JustificationMapper.updateFromDTO(justification, request);
-        setAuditUser(userId);
+        auditUserContext.setCurrentUser(userId);
         return JustificationMapper.toDTO(repository.save(justification));
-    }
-
-    private void setAuditUser(Integer userId) {
-        entityManager.createNativeQuery("SELECT set_config('app.usuario_atual', :userId, true)")
-                .setParameter("userId", userId.toString())
-                .getSingleResult();
     }
 
 }
