@@ -23,7 +23,6 @@ public class AlertService {
     private final DistributionCenterAccessService accessService;
     private final AuditUserContext auditUserContext;
     private final EntityManager entityManager;
-    private final AuditUserContext auditUserContext;
 
     public List<AlertResponse> findAll(Integer coldRoomId, User user) {
         List<Alert> alerts = coldRoomId == null
@@ -64,7 +63,7 @@ public class AlertService {
         accessService.requireOperationalWrite(user, distributionCenterId(alertId));
 
         Integer userId = Math.toIntExact(user.getId());
-        auditUserContext.setCurrentUser(userId);
+        auditUserContext.setCurrentUser(user);
 
         entityManager.createNativeQuery("CALL sp_reconhecer_alerta(:alertId, :userId)")
                 .setParameter("alertId", alertId)

@@ -82,7 +82,6 @@ public class ReportService {
             throw new ReportRuleViolationException("O conteúdo do relatório não pode ficar em branco.");
         }
 
-        auditUserContext.setCurrentUser(userId);
         Report report = findEditableReport(id, userId);
         java.time.LocalDate periodStart = request.periodStart() != null
                 ? request.periodStart() : report.getPeriodStart();

@@ -36,7 +36,6 @@ class AlertServiceTest {
     @Mock private DistributionCenterAccessService accessService;
     @Mock private AuditUserContext auditUserContext;
     @Mock private EntityManager entityManager;
-    @Mock private AuditUserContext auditUserContext;
     @Mock private Query query;
     private AlertService service;
 
@@ -108,7 +107,7 @@ class AlertServiceTest {
 
         service.recognize(1, user);
 
-        verify(auditUserContext).setCurrentUser(7);
+        verify(auditUserContext).setCurrentUser(user);
         verify(query).executeUpdate();
     }
 
