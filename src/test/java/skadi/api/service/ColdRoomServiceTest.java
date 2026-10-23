@@ -17,6 +17,8 @@ import skadi.api.exceptions.ThermometerNotFoundException;
 import skadi.api.model.ColdRoom;
 import skadi.api.model.DistributionCenter;
 import skadi.api.model.Thermometer;
+import skadi.api.model.User;
+import skadi.api.enums.NivelAcesso;
 import skadi.api.repository.ColdRoomRepository;
 import skadi.api.repository.DistributionCenterRepository;
 import skadi.api.repository.ThermometerRepository;
@@ -44,11 +46,15 @@ class ColdRoomServiceTest {
     @Mock
     private ThermometerRepository thermometerRepository;
 
+    @Mock private DistributionCenterAccessService accessService;
+    @Mock private AuditUserContext auditUserContext;
+
     private ColdRoomService service;
 
     @BeforeEach
     void setUp() {
-        service = new ColdRoomService(repository, distributionCenterRepository, thermometerRepository);
+        service = new ColdRoomService(repository, distributionCenterRepository, thermometerRepository,
+                accessService, auditUserContext);
     }
 
     @Test
@@ -63,7 +69,7 @@ class ColdRoomServiceTest {
             return coldRoom;
         });
 
-        ColdRoomResponse response = service.create(request);
+        ColdRoomResponse response = service.create(request, admin());
 
         ArgumentCaptor<ColdRoom> captor = ArgumentCaptor.forClass(ColdRoom.class);
         verify(repository).save(captor.capture());
@@ -82,7 +88,7 @@ class ColdRoomServiceTest {
                 new BigDecimal("5.00"), new BigDecimal("5.00"), 1L, 2L);
 
         assertThrows(ColdRoomInvalidTemperatureRangeException.class,
-                () -> service.create(request));
+                () -> service.create(request, admin()));
 
         verify(repository, never()).save(any());
     }
@@ -91,7 +97,7 @@ class ColdRoomServiceTest {
     void createRejectsUnknownDistributionCenter() {
         when(distributionCenterRepository.findById(1L)).thenReturn(Optional.empty());
 
-        assertThrows(CdNotFoundException.class, () -> service.create(request(1L, 2L)));
+        assertThrows(CdNotFoundException.class, () -> service.create(request(1L, 2L), admin()));
     }
 
     @Test
@@ -100,7 +106,7 @@ class ColdRoomServiceTest {
         when(thermometerRepository.findById(2L)).thenReturn(Optional.empty());
 
         assertThrows(ThermometerNotFoundException.class,
-                () -> service.create(request(1L, 2L)));
+                () -> service.create(request(1L, 2L), admin()));
     }
 
     @Test
@@ -110,14 +116,14 @@ class ColdRoomServiceTest {
         when(repository.existsByThermometer_Id(2L)).thenReturn(true);
 
         assertThrows(ColdRoomRuleViolationException.class,
-                () -> service.create(request(1L, 2L)));
+                () -> service.create(request(1L, 2L), admin()));
     }
 
     @Test
     void findAllReturnsMappedColdRooms() {
         when(repository.findAll(any(Sort.class))).thenReturn(List.of(coldRoom()));
 
-        List<ColdRoomResponse> response = service.findAll();
+        List<ColdRoomResponse> response = service.findAll(superAdmin());
 
         assertEquals(1, response.size());
         assertEquals("Centro Principal", response.getFirst().distributionCenterName());
@@ -128,7 +134,7 @@ class ColdRoomServiceTest {
     void findByIdRejectsUnknownId() {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(ColdRoomNotFoundException.class, () -> service.findById(99L));
+        assertThrows(ColdRoomNotFoundException.class, () -> service.findById(99L, admin()));
     }
 
     @Test
@@ -140,7 +146,7 @@ class ColdRoomServiceTest {
         when(repository.existsByThermometer_IdAndIdNot(2L, 3L)).thenReturn(false);
         when(repository.save(coldRoom)).thenReturn(coldRoom);
 
-        ColdRoomResponse response = service.update(3L, request(1L, 2L));
+        ColdRoomResponse response = service.update(3L, request(1L, 2L), admin());
 
         assertEquals("Câmara vertical", response.model());
         assertEquals(new BigDecimal("-20.00"), response.minimumTemperature());
@@ -154,7 +160,7 @@ class ColdRoomServiceTest {
         when(thermometerRepository.hasTemperatureReadings(2L)).thenReturn(true);
 
         assertThrows(ColdRoomRuleViolationException.class,
-                () -> service.update(3L, request(1L, 4L)));
+                () -> service.update(3L, request(1L, 4L), admin()));
 
         verify(repository, never()).save(any());
     }
@@ -167,7 +173,7 @@ class ColdRoomServiceTest {
         when(repository.hasAlerts(3L)).thenReturn(false);
         when(thermometerRepository.hasTemperatureReadings(2L)).thenReturn(false);
 
-        service.delete(3L);
+        service.delete(3L, admin());
 
         verify(repository).delete(coldRoom);
         verify(repository).flush();
@@ -178,7 +184,7 @@ class ColdRoomServiceTest {
         when(repository.findById(3L)).thenReturn(Optional.of(coldRoom()));
         when(repository.hasBatchStorageHistory(3L)).thenReturn(true);
 
-        assertThrows(ColdRoomRuleViolationException.class, () -> service.delete(3L));
+        assertThrows(ColdRoomRuleViolationException.class, () -> service.delete(3L, admin()));
 
         verify(repository, never()).delete(any());
     }
@@ -189,7 +195,7 @@ class ColdRoomServiceTest {
         when(repository.hasBatchStorageHistory(3L)).thenReturn(false);
         when(repository.hasAlerts(3L)).thenReturn(true);
 
-        assertThrows(ColdRoomRuleViolationException.class, () -> service.delete(3L));
+        assertThrows(ColdRoomRuleViolationException.class, () -> service.delete(3L, admin()));
 
         verify(repository, never()).delete(any());
     }
@@ -201,7 +207,7 @@ class ColdRoomServiceTest {
         when(repository.hasAlerts(3L)).thenReturn(false);
         when(thermometerRepository.hasTemperatureReadings(2L)).thenReturn(true);
 
-        assertThrows(ColdRoomRuleViolationException.class, () -> service.delete(3L));
+        assertThrows(ColdRoomRuleViolationException.class, () -> service.delete(3L, admin()));
 
         verify(repository, never()).delete(any());
     }
@@ -235,5 +241,15 @@ class ColdRoomServiceTest {
 
     private Thermometer thermometer() {
         return new Thermometer(2L, "DHT22");
+    }
+
+    private User admin() {
+        return new User(10L, "Admin", "admin", "12345678901", "admin@skadi.com",
+                "senha", NivelAcesso.ADMIN, null, null);
+    }
+
+    private User superAdmin() {
+        return new User(11L, "Root", "root", null, "root@skadi.com",
+                "senha", NivelAcesso.SUPER_ADMIN, null, null);
     }
 }

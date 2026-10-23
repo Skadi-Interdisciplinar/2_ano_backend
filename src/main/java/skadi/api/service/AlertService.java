@@ -20,68 +20,60 @@ import jakarta.transaction.Transactional;
 public class AlertService {
 
     private final AlertRepository repository;
-    private final EntityManager entityManager;
+    private final DistributionCenterAccessService accessService;
     private final AuditUserContext auditUserContext;
+    private final EntityManager entityManager;
 
-    public List<AlertResponse> findAll() {
-        return findAll(null);
-    }
-
-    public List<AlertResponse> findAll(Integer coldRoomId) {
+    public List<AlertResponse> findAll(Integer coldRoomId, User user) {
         List<Alert> alerts = coldRoomId == null
                 ? repository.findAllByOrderByCreatedAtDesc()
                 : repository.findByColdRoomIdOrderByCreatedAtDesc(coldRoomId);
 
         return alerts.stream()
+                .filter(alert -> accessService.canRead(
+                        user, distributionCenterId(alert.getId())))
                 .map(this::toResponse)
                 .toList();
     }
 
-    public AlertResponse findById(Integer id) {
-        return repository.findById(id)
-                .map(this::toResponse)
+    public AlertResponse findById(Integer id, User user) {
+        Alert alert = repository.findById(id)
                 .orElseThrow(() -> new AlertNotFoundException(id));
+        accessService.requireRead(user, distributionCenterId(id));
+        return toResponse(alert);
     }
 
-    public List<AlertResponse> findHistory() {
-        return findHistory(null);
-    }
-
-    public List<AlertResponse> findHistory(Integer coldRoomId) {
+    public List<AlertResponse> findHistory(Integer coldRoomId, User user) {
         List<Alert> alerts = coldRoomId == null
                 ? repository.findByStatusOrderByCreatedAtDesc(AlertStatus.RESOLVIDO)
                 : repository.findByColdRoomIdAndStatusOrderByCreatedAtDesc(
                         coldRoomId, AlertStatus.RESOLVIDO);
 
         return alerts.stream()
+                .filter(alert -> accessService.canRead(
+                        user, distributionCenterId(alert.getId())))
                 .map(this::toResponse)
                 .toList();
     }
 
     @Transactional
     public void recognize(Integer alertId, User user) {
-        if (user == null
-                || user.getNivelAcesso() == null
-                || user.getNivelAcesso() == NivelAcesso.SUPER_ADMIN
-                || user.getCdId() == null) {
-            throw new AccessDeniedException(
-                    "Somente usuários vinculados ao CD do alerta podem reconhecê-lo.");
-        }
-
         repository.findById(alertId)
                 .orElseThrow(() -> new AlertNotFoundException(alertId));
-        if (!repository.belongsToDistributionCenter(alertId, user.getCdId())) {
-            throw new AccessDeniedException(
-                    "Somente usuários vinculados ao CD do alerta podem reconhecê-lo.");
-        }
+        accessService.requireOperationalWrite(user, distributionCenterId(alertId));
 
         Integer userId = Math.toIntExact(user.getId());
-        auditUserContext.setCurrentUser(userId);
+        auditUserContext.setCurrentUser(user);
 
         entityManager.createNativeQuery("CALL sp_reconhecer_alerta(:alertId, :userId)")
                 .setParameter("alertId", alertId)
                 .setParameter("userId", userId)
                 .executeUpdate();
+    }
+
+    private Long distributionCenterId(Integer alertId) {
+        return repository.findDistributionCenterIdByAlertId(alertId)
+                .orElseThrow(() -> new AlertNotFoundException(alertId));
     }
 
     private AlertResponse toResponse(Alert alert) {

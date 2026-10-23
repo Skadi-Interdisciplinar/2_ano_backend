@@ -45,7 +45,8 @@ class SignatureServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new SignatureService(reportService, repository, new SignatureVerificationService(), auditUserContext);
+        service = new SignatureService(
+                reportService, repository, new SignatureVerificationService(), auditUserContext);
     }
 
     @Test

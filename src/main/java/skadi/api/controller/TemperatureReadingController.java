@@ -41,7 +41,7 @@ public class TemperatureReadingController {
     public ResponseEntity<List<TemperatureReadingView>> findAll(
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.findAll(user.getCdId(), user.getNivelAcesso()));
+        return ResponseEntity.ok(service.findAll(user));
     }
 
     @GetMapping("/{readingId}")
@@ -49,7 +49,7 @@ public class TemperatureReadingController {
             @PathVariable Integer readingId,
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.findById(readingId, user.getCdId(), user.getNivelAcesso()));
+        return ResponseEntity.ok(service.findById(readingId, user));
     }
 
     @GetMapping("/cold-rooms/{coldRoomId}")
@@ -57,8 +57,7 @@ public class TemperatureReadingController {
             @PathVariable Long coldRoomId,
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.findHistoryByColdRoom(
-                coldRoomId, user.getCdId(), user.getNivelAcesso(), null, null));
+        return ResponseEntity.ok(service.findHistoryByColdRoom(coldRoomId, user, null, null));
     }
 
     @GetMapping("/cold-rooms/{coldRoomId}/current-temperature")
@@ -66,7 +65,7 @@ public class TemperatureReadingController {
             @PathVariable Long coldRoomId,
             @AuthenticationPrincipal User user
     ) {
-        return service.findCurrentByColdRoom(coldRoomId, user.getCdId(), user.getNivelAcesso())
+        return service.findCurrentByColdRoom(coldRoomId, user)
                 .map(ResponseEntity::ok)
                 .orElseThrow(() -> new CurrentTemperatureNotFoundException(coldRoomId));
     }
@@ -84,8 +83,7 @@ public class TemperatureReadingController {
     ) {
         return ResponseEntity.ok(service.findHistoryByColdRoom(
                 coldRoomId,
-                user.getCdId(),
-                user.getNivelAcesso(),
+                user,
                 from == null ? null : from.toLocalDateTime(),
                 to == null ? null : to.toLocalDateTime()
         ));

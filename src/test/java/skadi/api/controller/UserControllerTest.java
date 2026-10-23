@@ -47,7 +47,7 @@ class UserControllerTest {
 
     @Test
     void register_returns201() throws Exception {
-        doNothing().when(userService).register(any());
+        doNothing().when(userService).register(any(), any());
 
         mockMvc.perform(post("/auth/register")
                         .header(HttpHeaders.AUTHORIZATION, SUPER_ADMIN_BEARER)
@@ -85,7 +85,7 @@ class UserControllerTest {
 
     @Test
     void register_returns409WhenUsernameExists() throws Exception {
-        doThrow(new UserAlreadyExistsException()).when(userService).register(any());
+        doThrow(new UserAlreadyExistsException()).when(userService).register(any(), any());
 
         mockMvc.perform(post("/auth/register")
                         .header(HttpHeaders.AUTHORIZATION, SUPER_ADMIN_BEARER)
@@ -110,7 +110,7 @@ class UserControllerTest {
     @Test
     void register_returns403WhenCreatingSuperAdmin() throws Exception {
         doThrow(new AccessDeniedException("SUPER_ADMIN cadastra apenas ADMIN"))
-                .when(userService).register(any());
+                .when(userService).register(any(), any());
 
         mockMvc.perform(post("/auth/register")
                         .header(HttpHeaders.AUTHORIZATION, SUPER_ADMIN_BEARER)

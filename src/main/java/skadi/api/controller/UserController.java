@@ -19,8 +19,11 @@ public class UserController {
     }
 
     @PostMapping("/auth/register")
-    public ResponseEntity<Void> register(@RequestBody RegisterRequest dto){
-        service.register(dto);
+    public ResponseEntity<Void> register(
+            @RequestBody RegisterRequest dto,
+            @AuthenticationPrincipal User authenticatedUser
+    ){
+        service.register(dto, authenticatedUser);
         return ResponseEntity.status(HttpStatus.CREATED).build();
 
     }

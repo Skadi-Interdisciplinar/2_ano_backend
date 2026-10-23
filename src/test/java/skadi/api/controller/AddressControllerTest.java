@@ -44,7 +44,7 @@ class AddressControllerTest {
 
     @Test
     void createReturns201AndLocation() throws Exception {
-        when(service.create(eq(1L), any())).thenReturn(address());
+        when(service.create(eq(1L), any(), any())).thenReturn(address());
 
         mockMvc.perform(post("/distribution-centers/1/addresses")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -74,7 +74,7 @@ class AddressControllerTest {
 
     @Test
     void findAllByDistributionCenterReturnsAddresses() throws Exception {
-        when(service.findAllByDistributionCenter(1L)).thenReturn(List.of(address()));
+        when(service.findAllByDistributionCenter(eq(1L), any())).thenReturn(List.of(address()));
 
         mockMvc.perform(get("/distribution-centers/1/addresses"))
                 .andExpect(status().isOk())
@@ -84,7 +84,7 @@ class AddressControllerTest {
 
     @Test
     void findByIdReturnsAddress() throws Exception {
-        when(service.findById(10L)).thenReturn(address());
+        when(service.findById(eq(10L), any())).thenReturn(address());
 
         mockMvc.perform(get("/addresses/10"))
                 .andExpect(status().isOk())
@@ -93,7 +93,7 @@ class AddressControllerTest {
 
     @Test
     void updateReturnsUpdatedAddress() throws Exception {
-        when(service.update(eq(10L), any())).thenReturn(address());
+        when(service.update(eq(10L), any(), any())).thenReturn(address());
 
         mockMvc.perform(put("/addresses/10")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -104,7 +104,7 @@ class AddressControllerTest {
 
     @Test
     void deleteReturns204() throws Exception {
-        doNothing().when(service).delete(10L);
+        doNothing().when(service).delete(eq(10L), any());
 
         mockMvc.perform(delete("/addresses/10"))
                 .andExpect(status().isNoContent());

@@ -47,7 +47,7 @@ class ThermometerControllerTest {
 
     @Test
     void createReturns201AndCreatedThermometer() throws Exception {
-        when(service.create(any())).thenReturn(thermometer());
+        when(service.create(any(), any())).thenReturn(thermometer());
 
         mockMvc.perform(post("/thermometer")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -73,7 +73,7 @@ class ThermometerControllerTest {
 
     @Test
     void findAllReturnsThermometers() throws Exception {
-        when(service.findAll()).thenReturn(List.of(thermometer()));
+        when(service.findAll(any())).thenReturn(List.of(thermometer()));
 
         mockMvc.perform(get("/thermometers"))
                 .andExpect(status().isOk())
@@ -83,7 +83,7 @@ class ThermometerControllerTest {
 
     @Test
     void findByIdReturnsThermometer() throws Exception {
-        when(service.findById(1L)).thenReturn(thermometer());
+        when(service.findById(eq(1L), any())).thenReturn(thermometer());
 
         mockMvc.perform(get("/thermometers/1"))
                 .andExpect(status().isOk())
@@ -92,7 +92,7 @@ class ThermometerControllerTest {
 
     @Test
     void findByIdReturns404WhenThermometerDoesNotExist() throws Exception {
-        when(service.findById(99L)).thenThrow(new ThermometerNotFoundException(99L));
+        when(service.findById(eq(99L), any())).thenThrow(new ThermometerNotFoundException(99L));
 
         mockMvc.perform(get("/thermometers/99"))
                 .andExpect(status().isNotFound())
@@ -103,7 +103,7 @@ class ThermometerControllerTest {
 
     @Test
     void updateReturnsUpdatedThermometer() throws Exception {
-        when(service.update(eq(1L), any())).thenReturn(thermometer());
+        when(service.update(eq(1L), any(), any())).thenReturn(thermometer());
 
         mockMvc.perform(put("/thermometers/1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -114,7 +114,7 @@ class ThermometerControllerTest {
 
     @Test
     void deleteReturns204() throws Exception {
-        doNothing().when(service).delete(1L);
+        doNothing().when(service).delete(eq(1L), any());
 
         mockMvc.perform(delete("/thermometers/1"))
                 .andExpect(status().isNoContent());
@@ -124,7 +124,7 @@ class ThermometerControllerTest {
     void deleteReturns409WhenThermometerIsInUse() throws Exception {
         doThrow(new ThermometerRuleViolationException(
                 "O termômetro não pode ser excluído porque está associado a uma câmara frigorífica"))
-                .when(service).delete(1L);
+                .when(service).delete(eq(1L), any());
 
         mockMvc.perform(delete("/thermometers/1"))
                 .andExpect(status().isConflict())

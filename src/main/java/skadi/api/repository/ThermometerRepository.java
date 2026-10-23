@@ -6,6 +6,10 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import skadi.api.model.Thermometer;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.Optional;
+
 @Repository
 public interface ThermometerRepository extends JpaRepository<Thermometer, Long> {
 
@@ -26,4 +30,27 @@ public interface ThermometerRepository extends JpaRepository<Thermometer, Long> 
             )
             """, nativeQuery = true)
     boolean hasTemperatureReadings(@Param("thermometerId") Long thermometerId);
+
+    @Query("""
+            SELECT thermometer
+            FROM Thermometer thermometer
+            WHERE NOT EXISTS (
+                SELECT coldRoom.id FROM ColdRoom coldRoom
+                WHERE coldRoom.thermometer = thermometer
+            ) OR EXISTS (
+                SELECT coldRoom.id FROM ColdRoom coldRoom
+                WHERE coldRoom.thermometer = thermometer
+                  AND coldRoom.distributionCenter.id IN :distributionCenterIds
+            )
+            ORDER BY thermometer.model, thermometer.id
+            """)
+    List<Thermometer> findAccessible(
+            @Param("distributionCenterIds") Collection<Long> distributionCenterIds);
+
+    @Query("""
+            SELECT coldRoom.distributionCenter.id
+            FROM ColdRoom coldRoom
+            WHERE coldRoom.thermometer.id = :thermometerId
+            """)
+    Optional<Long> findDistributionCenterId(@Param("thermometerId") Long thermometerId);
 }

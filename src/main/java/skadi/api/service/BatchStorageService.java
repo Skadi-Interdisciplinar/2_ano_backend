@@ -14,6 +14,7 @@ import skadi.api.mapper.BatchStorageMapper;
 import skadi.api.model.Batch;
 import skadi.api.model.BatchStorage;
 import skadi.api.model.ColdRoom;
+import skadi.api.model.User;
 import skadi.api.repository.BatchRepository;
 import skadi.api.repository.BatchStorageRepository;
 import skadi.api.repository.ColdRoomRepository;
@@ -31,13 +32,20 @@ public class BatchStorageService {
     private final BatchStorageRepository storageRepository;
     private final BatchRepository batchRepository;
     private final ColdRoomRepository coldRoomRepository;
+    private final DistributionCenterAccessService accessService;
+    private final AuditUserContext auditUserContext;
 
     @Transactional
-    public BatchStorageResponse enter(Long batchId, BatchStorageRequest request) {
+    public BatchStorageResponse enter(Long batchId, BatchStorageRequest request, User user) {
         Batch batch = lockBatch(batchId);
         ensureBatchHasNoActiveStorage(batchId);
         ColdRoom coldRoom = findColdRoom(request.coldRoomId());
+        accessService.requireOperationalWrite(user, coldRoom.getDistributionCenter().getId());
+        storageRepository.findFirstByBatch_IdOrderByEntryDateAsc(batchId)
+                .ifPresent(firstStorage -> ensureSameDistributionCenter(
+                        firstStorage.getColdRoom(), coldRoom));
 
+        auditUserContext.setCurrentUser(user);
         BatchStorage storage = new BatchStorage(
                 null,
                 batch,
@@ -49,10 +57,14 @@ public class BatchStorageService {
     }
 
     @Transactional(readOnly = true)
-    public List<BatchStorageResponse> findHistory(Long batchId) {
+    public List<BatchStorageResponse> findHistory(Long batchId, User user) {
         if (!batchRepository.existsById(batchId)) {
             throw new BatchNotFoundException(batchId);
         }
+        BatchStorage firstStorage = storageRepository.findFirstByBatch_IdOrderByEntryDateAsc(batchId)
+                .orElseThrow(() -> new BatchStorageRuleViolationException(
+                        "O lote não possui um centro de distribuição definido"));
+        accessService.requireRead(user, firstStorage.getColdRoom().getDistributionCenter().getId());
 
         return storageRepository.findByBatch_IdOrderByEntryDateDesc(batchId).stream()
                 .map(BatchStorageMapper::toResponse)
@@ -60,7 +72,12 @@ public class BatchStorageService {
     }
 
     @Transactional
-    public BatchStorageResponse move(Long batchId, Long storageId, BatchStorageRequest request) {
+    public BatchStorageResponse move(
+            Long batchId,
+            Long storageId,
+            BatchStorageRequest request,
+            User user
+    ) {
         lockBatch(batchId);
         BatchStorage currentStorage = findStorage(batchId, storageId);
         ensureStorageIsActive(currentStorage);
@@ -72,6 +89,10 @@ public class BatchStorageService {
         }
 
         ColdRoom destination = findColdRoom(request.coldRoomId());
+        accessService.requireOperationalWrite(
+                user, currentStorage.getColdRoom().getDistributionCenter().getId());
+        ensureSameDistributionCenter(currentStorage.getColdRoom(), destination);
+        auditUserContext.setCurrentUser(user);
         LocalDateTime movementDate = exitDateFor(currentStorage);
         currentStorage.setExitDate(movementDate);
         saveAndFlush(currentStorage);
@@ -87,11 +108,14 @@ public class BatchStorageService {
     }
 
     @Transactional
-    public BatchStorageResponse exit(Long batchId, Long storageId) {
+    public BatchStorageResponse exit(Long batchId, Long storageId, User user) {
         lockBatch(batchId);
         BatchStorage storage = findStorage(batchId, storageId);
         ensureStorageIsActive(storage);
+        accessService.requireOperationalWrite(
+                user, storage.getColdRoom().getDistributionCenter().getId());
 
+        auditUserContext.setCurrentUser(user);
         storage.setExitDate(exitDateFor(storage));
         return BatchStorageMapper.toResponse(saveAndFlush(storage));
     }
@@ -124,6 +148,14 @@ public class BatchStorageService {
     private void ensureStorageIsActive(BatchStorage storage) {
         if (storage.getExitDate() != null) {
             throw new BatchStorageRuleViolationException("O armazenamento informado já foi encerrado");
+        }
+    }
+
+    private void ensureSameDistributionCenter(ColdRoom origin, ColdRoom destination) {
+        if (!origin.getDistributionCenter().getId()
+                .equals(destination.getDistributionCenter().getId())) {
+            throw new BatchStorageRuleViolationException(
+                    "O lote não pode ser movimentado entre centros de distribuição diferentes");
         }
     }
 

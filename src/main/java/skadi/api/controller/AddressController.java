@@ -3,6 +3,7 @@ package skadi.api.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import skadi.api.dto.AddressRequest;
 import skadi.api.dto.AddressResponse;
+import skadi.api.model.User;
 import skadi.api.service.AddressService;
 
 import java.net.URI;
@@ -26,35 +28,44 @@ public class AddressController {
     @PostMapping("/distribution-centers/{distributionCenterId}/addresses")
     public ResponseEntity<AddressResponse> create(
             @PathVariable Long distributionCenterId,
-            @Valid @RequestBody AddressRequest request
+            @Valid @RequestBody AddressRequest request,
+            @AuthenticationPrincipal User user
     ) {
-        AddressResponse response = service.create(distributionCenterId, request);
+        AddressResponse response = service.create(distributionCenterId, request, user);
         return ResponseEntity.created(URI.create("/addresses/" + response.id())).body(response);
     }
 
     @GetMapping("/distribution-centers/{distributionCenterId}/addresses")
     public ResponseEntity<List<AddressResponse>> findAllByDistributionCenter(
-            @PathVariable Long distributionCenterId
+            @PathVariable Long distributionCenterId,
+            @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.findAllByDistributionCenter(distributionCenterId));
+        return ResponseEntity.ok(service.findAllByDistributionCenter(distributionCenterId, user));
     }
 
     @GetMapping("/addresses/{id}")
-    public ResponseEntity<AddressResponse> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(service.findById(id));
+    public ResponseEntity<AddressResponse> findById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User user
+    ) {
+        return ResponseEntity.ok(service.findById(id, user));
     }
 
     @PutMapping("/addresses/{id}")
     public ResponseEntity<AddressResponse> update(
             @PathVariable Long id,
-            @Valid @RequestBody AddressRequest request
+            @Valid @RequestBody AddressRequest request,
+            @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.update(id, request));
+        return ResponseEntity.ok(service.update(id, request, user));
     }
 
     @DeleteMapping("/addresses/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        service.delete(id);
+    public ResponseEntity<Void> delete(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User user
+    ) {
+        service.delete(id, user);
         return ResponseEntity.noContent().build();
     }
 }

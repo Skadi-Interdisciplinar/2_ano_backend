@@ -76,6 +76,7 @@ class NotificationServiceTest {
         verify(auditUserContext).setCurrentUser(12L);
         assertNotNull(result.readAt());
         assertEquals(notification.getReadAt(), result.readAt());
+        verify(auditUserContext).setCurrentUser(12L);
         verify(repository).save(notification);
     }
 

@@ -74,6 +74,7 @@ public class ReportService {
 
     @Transactional
     public ReportResponse update(Integer id, ReportPatchRequest request, Integer userId) {
+        auditUserContext.setCurrentUser(userId);
         if (request.content() == null && request.periodStart() == null && request.periodEnd() == null) {
             throw new ReportRuleViolationException("Informe ao menos um campo para atualizar.");
         }
@@ -81,7 +82,6 @@ public class ReportService {
             throw new ReportRuleViolationException("O conteúdo do relatório não pode ficar em branco.");
         }
 
-        auditUserContext.setCurrentUser(userId);
         Report report = findEditableReport(id, userId);
         java.time.LocalDate periodStart = request.periodStart() != null
                 ? request.periodStart() : report.getPeriodStart();

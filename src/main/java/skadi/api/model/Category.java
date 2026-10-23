@@ -6,15 +6,16 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 @Entity
 @Table(name = "tb_categoria")
 public class Category {
@@ -26,9 +27,22 @@ public class Category {
     @Column(name = "nome", nullable = false, unique = true, length = 150)
     private String name;
 
-    @Column(name = "temperatura_ideal", nullable = false, precision = 5, scale = 2)
-    private BigDecimal idealTemperature;
+    @Column(name = "temperatura_min", nullable = false, precision = 5, scale = 2)
+    private BigDecimal minimumTemperature;
 
-    @Column(name = "vida_util_horas", nullable = false, precision = 7, scale = 2)
-    private BigDecimal shelfLifeHours;
+    @Column(name = "temperatura_max", nullable = false, precision = 5, scale = 2)
+    private BigDecimal maximumTemperature;
+
+    @JdbcTypeCode(SqlTypes.INTERVAL_SECOND)
+    @Column(name = "vida_util_horas", nullable = false, columnDefinition = "interval hour to minute")
+    private Duration shelfLife;
+
+    public Category(Long id, String name, BigDecimal minimumTemperature,
+                    BigDecimal maximumTemperature, Duration shelfLife) {
+        this.id = id;
+        this.name = name;
+        this.minimumTemperature = minimumTemperature;
+        this.maximumTemperature = maximumTemperature;
+        this.shelfLife = shelfLife;
+    }
 }

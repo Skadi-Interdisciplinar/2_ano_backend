@@ -1,10 +1,10 @@
 package skadi.api.enums;
 
 public enum BatchStatus {
-    ACTIVE("ativo"),
-    BLOCKED("bloqueado"),
-    SHIPPED("expedido"),
-    EXPIRED("vencido");
+    ACTIVE("ATIVO"),
+    BLOCKED("BLOQUEADO"),
+    SHIPPED("EXPEDIDO"),
+    SOLD("VENDIDO");
 
     private final String databaseValue;
 

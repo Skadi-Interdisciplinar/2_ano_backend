@@ -3,6 +3,7 @@ package skadi.api.controller;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import skadi.api.dto.DistributionCenterRequest;
 import skadi.api.dto.DistributionCenterRequestName;
 import skadi.api.dto.DistributionCenterResponse;
+import skadi.api.model.User;
 import skadi.api.service.DistributionCenterService;
 
 import java.util.List;
@@ -29,39 +31,50 @@ public class DistributionCenterController {
     }
 
     @PostMapping
-    public ResponseEntity<DistributionCenterResponse> insertCd(@RequestBody @Valid DistributionCenterRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(service.insertCd(request));
+    public ResponseEntity<DistributionCenterResponse> insertCd(
+            @RequestBody @Valid DistributionCenterRequest request,
+            @AuthenticationPrincipal User user
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.insertCd(request, user));
     }
 
     @GetMapping
-    public ResponseEntity<List<DistributionCenterResponse>> findAllCD() {
-        return ResponseEntity.ok(service.findAllCD());
+    public ResponseEntity<List<DistributionCenterResponse>> findAllCD(@AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(service.findAllCD(user));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<DistributionCenterResponse> findCDById(@PathVariable Long id) {
-        return ResponseEntity.ok(service.findCDById(id));
+    public ResponseEntity<DistributionCenterResponse> findCDById(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User user
+    ) {
+        return ResponseEntity.ok(service.findCDById(id, user));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<DistributionCenterResponse> updateCD(
             @PathVariable Long id,
-            @RequestBody @Valid DistributionCenterRequest request
+            @RequestBody @Valid DistributionCenterRequest request,
+            @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.updateCD(request, id));
+        return ResponseEntity.ok(service.updateCD(request, id, user));
     }
 
     @PatchMapping("/{id}/name")
     public ResponseEntity<DistributionCenterResponse> updateNameCd(
             @PathVariable Long id,
-            @RequestBody @Valid DistributionCenterRequestName request
+            @RequestBody @Valid DistributionCenterRequestName request,
+            @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.updateNameCd(request, id));
+        return ResponseEntity.ok(service.updateNameCd(request, id, user));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCd(@PathVariable Long id) {
-        service.deleteCD(id);
+    public ResponseEntity<Void> deleteCd(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User user
+    ) {
+        service.deleteCD(id, user);
         return ResponseEntity.noContent().build();
     }
 }

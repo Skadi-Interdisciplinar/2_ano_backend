@@ -26,6 +26,7 @@ import skadi.api.exceptions.UserAlreadyExistsException;
 import skadi.api.model.DistributionCenter;
 import skadi.api.model.User;
 import skadi.api.repository.UserRepository;
+import skadi.api.repository.DistributionCenterRepository;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -52,28 +53,32 @@ class UserServiceTest {
     @Mock
     private Authentication authentication;
 
+    @Mock private DistributionCenterRepository distributionCenterRepository;
+    @Mock private DistributionCenterAccessService accessService;
+    @Mock private AuditUserContext auditUserContext;
+
     private final GlobalExceptionHandler exceptionHandler = new GlobalExceptionHandler();
 
     private UserService userService;
 
     @BeforeEach
     void setUp() {
-        userService = new UserService(repository, authenticationManager, tokenProvider, passwordEncoder);
+        userService = new UserService(repository, authenticationManager, tokenProvider, passwordEncoder,
+                distributionCenterRepository, accessService, auditUserContext);
         ReflectionTestUtils.setField(userService, "expirationTime", 3600L);
     }
 
     @Test
     void register_savesUserWhenUsernameIsAvailable() {
-        DistributionCenter cd = new DistributionCenter(1L, "CD Osasco", "12345678901234");
         RegisterRequest request = new RegisterRequest(
-                "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, cd, null
+                "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, null, null
         );
-        User salvo = new User(10L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, cd, null);
+        User salvo = new User(10L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, null, null);
         when(repository.existsByUsername("enzo")).thenReturn(false);
         when(passwordEncoder.encode("senha")).thenReturn("$2a$10$hashed");
         when(repository.save(any(User.class))).thenReturn(salvo);
 
-        userService.register(request);
+        userService.register(request, superAdmin());
 
         ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
         verify(repository).save(captor.capture());
@@ -83,34 +88,29 @@ class UserServiceTest {
     }
 
     @Test
-    void register_throwsWhenCreatingSuperAdmin() {
+    void register_allowsSuperAdminToCreateAnotherSuperAdmin() {
         RegisterRequest request = new RegisterRequest(
-                "Root", "root", "12345678901", "root@email.com", "senha", NivelAcesso.SUPER_ADMIN,
-                new DistributionCenter(1L, "CD Osasco", "12345678901234"), null
+                "Root 2", "root2", null, "root2@email.com", "senha", NivelAcesso.SUPER_ADMIN,
+                null, null
         );
+        when(passwordEncoder.encode("senha")).thenReturn("hash");
 
-        AccessDeniedException erro = assertThrows(
-                AccessDeniedException.class,
-                () -> userService.register(request)
-        );
-        ResponseEntity<ErrorResponse> response = exceptionHandler.handleAccessDenied(erro);
+        userService.register(request, superAdmin());
 
-        assertEquals(HttpStatus.FORBIDDEN, response.getStatusCode());
-        assertEquals(403, response.getBody().statusCode());
-        assertEquals("SUPER_ADMIN cadastra apenas ADMIN", response.getBody().message());
+        verify(repository).save(any(User.class));
     }
 
     @Test
     void register_throwsWhenUsernameAlreadyExists() {
         RegisterRequest request = new RegisterRequest(
                 "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN,
-                new DistributionCenter(1L, "CD Osasco", "12345678901234"), null
+                null, null
         );
         when(repository.existsByUsername("enzo")).thenReturn(true);
 
         UserAlreadyExistsException erro = assertThrows(
                 UserAlreadyExistsException.class,
-                () -> userService.register(request)
+                () -> userService.register(request, superAdmin())
         );
         ResponseEntity<ErrorResponse> response = exceptionHandler.handleAlreadyExists(erro);
 
@@ -163,5 +163,10 @@ class UserServiceTest {
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertEquals(500, response.getBody().statusCode());
         assertEquals("Erro inesperado: java.lang.IllegalStateException: falha", response.getBody().message());
+    }
+
+    private User superAdmin() {
+        return new User(1L, "Root", "root", null, "root@skadi.com", "senha",
+                NivelAcesso.SUPER_ADMIN, null, null);
     }
 }
