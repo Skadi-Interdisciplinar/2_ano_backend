@@ -53,7 +53,7 @@ class SignatureControllerTest {
     void setUp() {
         user = new User(7L, "Test User", "testuser", "12345678901",
                 "test@example.com", "password", NivelAcesso.GESTOR,
-                new DistributionCenter(1L, "CD de teste", "12345678901234"), null);
+                new DistributionCenter(1L, "CD de teste", "12345678901234", null), null, null);
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
         mockMvc = MockMvcBuilders.standaloneSetup(new SignatureController(service))

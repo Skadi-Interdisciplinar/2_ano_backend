@@ -145,8 +145,12 @@ class AlertServiceTest {
 
     private User user(Long id, NivelAcesso nivelAcesso, Long cdId) {
         DistributionCenter cd = cdId == null ? null
-                : new DistributionCenter(cdId, "CD de teste", "12345678901234");
+                : new DistributionCenter(cdId, "CD de teste", "12345678901234", null);
+        if (nivelAcesso == NivelAcesso.ADMIN) {
+            return new User(id, "Usuário", "usuario", "12345678901", "email@test.com",
+                    "senha", nivelAcesso, null, cd == null ? null : List.of(cd), null);
+        }
         return new User(id, "Usuário", "usuario", "12345678901", "email@test.com",
-                "senha", nivelAcesso, cd, null);
+                "senha", nivelAcesso, cd, null, null);
     }
 }

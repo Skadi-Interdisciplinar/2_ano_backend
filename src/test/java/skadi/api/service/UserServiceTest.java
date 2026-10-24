@@ -27,7 +27,10 @@ import skadi.api.model.DistributionCenter;
 import skadi.api.model.User;
 import skadi.api.repository.UserRepository;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -64,11 +67,13 @@ class UserServiceTest {
 
     @Test
     void register_savesUserWhenUsernameIsAvailable() {
-        DistributionCenter cd = new DistributionCenter(1L, "CD Osasco", "12345678901234");
+        DistributionCenter cd = new DistributionCenter(1L, "CD Osasco", "12345678901234", null);
         RegisterRequest request = new RegisterRequest(
-                "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, cd, null
+                "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN,
+                null, List.of(cd), null
         );
-        User salvo = new User(10L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN, cd, null);
+        User salvo = new User(10L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha",
+                NivelAcesso.ADMIN, null, List.of(cd), null);
         when(repository.existsByUsername("enzo")).thenReturn(false);
         when(passwordEncoder.encode("senha")).thenReturn("$2a$10$hashed");
         when(repository.save(any(User.class))).thenReturn(salvo);
@@ -80,13 +85,15 @@ class UserServiceTest {
         assertEquals("enzo", captor.getValue().getUsername());
         assertEquals(NivelAcesso.ADMIN, captor.getValue().getNivelAcesso());
         assertEquals("$2a$10$hashed", captor.getValue().getSenha());
+        assertEquals(List.of(cd), captor.getValue().getCd());
+        assertNull(captor.getValue().getCdGestor());
     }
 
     @Test
     void register_throwsWhenCreatingSuperAdmin() {
         RegisterRequest request = new RegisterRequest(
                 "Root", "root", "12345678901", "root@email.com", "senha", NivelAcesso.SUPER_ADMIN,
-                new DistributionCenter(1L, "CD Osasco", "12345678901234"), null
+                null, List.of(new DistributionCenter(1L, "CD Osasco", "12345678901234", null)), null
         );
 
         AccessDeniedException erro = assertThrows(
@@ -104,7 +111,7 @@ class UserServiceTest {
     void register_throwsWhenUsernameAlreadyExists() {
         RegisterRequest request = new RegisterRequest(
                 "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN,
-                new DistributionCenter(1L, "CD Osasco", "12345678901234"), null
+                null, List.of(new DistributionCenter(1L, "CD Osasco", "12345678901234", null)), null
         );
         when(repository.existsByUsername("enzo")).thenReturn(true);
 

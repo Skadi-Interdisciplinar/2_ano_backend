@@ -60,7 +60,8 @@ class UserControllerTest {
                                   "email": "enzo@email.com",
                                   "senha": "senha",
                                   "nivelAcesso": "ADMIN",
-                                  "cd": { "id": 1, "name": "CD Osasco", "cnpj": "12345678901234" },
+                                  "cdGestor": null,
+                                  "cd": [{ "id": 1, "name": "CD Osasco", "cnpj": "12345678901234" }],
                                   "codGestor": null
                                 }
                                 """))
@@ -98,7 +99,8 @@ class UserControllerTest {
                                   "email": "enzo@email.com",
                                   "senha": "senha",
                                   "nivelAcesso": "ADMIN",
-                                  "cd": { "id": 1, "name": "CD Osasco", "cnpj": "12345678901234" },
+                                  "cdGestor": null,
+                                  "cd": [{ "id": 1, "name": "CD Osasco", "cnpj": "12345678901234" }],
                                   "codGestor": null
                                 }
                                 """))
@@ -123,7 +125,8 @@ class UserControllerTest {
                                   "email": "root@email.com",
                                   "senha": "senha",
                                   "nivelAcesso": "SUPER_ADMIN",
-                                  "cd": { "id": 1, "name": "CD Osasco", "cnpj": "12345678901234" },
+                                  "cdGestor": null,
+                                  "cd": [{ "id": 1, "name": "CD Osasco", "cnpj": "12345678901234" }],
                                   "codGestor": null
                                 }
                                 """))

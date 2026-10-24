@@ -35,7 +35,7 @@ class UserDetailsServiceImplTest {
 
     @Test
     void loadUserByUsername_returnsUserWhenFound() {
-        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.GESTOR, new DistributionCenter(1L, "CD Osasco", "12345678901234"), 2);
+        User user = new User("Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.GESTOR, new DistributionCenter(1L, "CD Osasco", "12345678901234", null), 2);
         when(userRepository.findByUsername("enzo")).thenReturn(Optional.of(user));
 
         UserDetails encontrado = userDetailsService.loadUserByUsername("enzo");

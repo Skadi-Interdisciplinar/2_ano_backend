@@ -248,7 +248,7 @@ class BatchStorageServiceTest {
                 "Corredor A",
                 new BigDecimal("-20.00"),
                 new BigDecimal("-10.00"),
-                new DistributionCenter(5L, "Centro Principal", "12345678000199"),
+                new DistributionCenter(5L, "Centro Principal", "12345678000199", null),
                 new Thermometer(id + 10, "DHT22")
         );
     }

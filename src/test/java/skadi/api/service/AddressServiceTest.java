@@ -178,6 +178,6 @@ class AddressServiceTest {
     }
 
     private DistributionCenter distributionCenter() {
-        return new DistributionCenter(1L, "CD São Paulo", "48372615000194");
+        return new DistributionCenter(1L, "CD São Paulo", "48372615000194", null);
     }
 }

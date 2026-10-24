@@ -26,6 +26,7 @@ import skadi.api.model.DistributionCenter;
 import skadi.api.service.JustificationService;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -59,7 +60,7 @@ class JustificationControllerTest {
                             org.springframework.web.bind.support.WebDataBinderFactory binderFactory) {
                         return new User(7L, "Test User", "test-user", "12345678901",
                                 "test@example.com", "password", NivelAcesso.ADMIN,
-                                new DistributionCenter(1L, "CD de teste", "12345678901234"), null);
+                                null, List.of(new DistributionCenter(1L, "CD de teste", "12345678901234", null)), null);
                     }
                 })
                 .build();
