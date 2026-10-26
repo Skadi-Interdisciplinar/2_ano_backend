@@ -175,6 +175,6 @@ class UserServiceTest {
 
     private User superAdmin() {
         return new User(1L, "Root", "root", null, "root@skadi.com", "senha",
-                NivelAcesso.SUPER_ADMIN, null, null);
+                NivelAcesso.SUPER_ADMIN, null, null, null);
     }
 }

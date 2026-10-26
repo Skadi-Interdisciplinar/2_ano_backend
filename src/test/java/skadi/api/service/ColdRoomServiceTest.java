@@ -245,11 +245,11 @@ class ColdRoomServiceTest {
 
     private User admin() {
         return new User(10L, "Admin", "admin", "12345678901", "admin@skadi.com",
-                "senha", NivelAcesso.ADMIN, null, null);
+                "senha", NivelAcesso.ADMIN, null, null, null);
     }
 
     private User superAdmin() {
         return new User(11L, "Root", "root", null, "root@skadi.com",
-                "senha", NivelAcesso.SUPER_ADMIN, null, null);
+                "senha", NivelAcesso.SUPER_ADMIN, null, null, null);
     }
 }
