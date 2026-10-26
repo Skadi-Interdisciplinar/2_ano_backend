@@ -1,6 +1,7 @@
 package skadi.api.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -9,7 +10,6 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import skadi.api.enums.NivelAcesso;
-import org.hibernate.validator.constraints.Length;
 
 import java.util.Collection;
 import java.util.List;
@@ -30,37 +30,64 @@ public class User implements UserDetails {
 
     @Column(unique = true)
     private String username;
-    @Length(max = 11,min = 11,message = "Cpf precisa ter 11 caracteres")
+    @Size(max = 11,min = 11,message = "Cpf precisa ter 11 caracteres")
     private String cpf;
 
     @Column(unique = true)
     private String email;
+
+
     private String senha;
     @Enumerated(EnumType.STRING)
     @Column(name = "nivel_acesso")
     private NivelAcesso nivelAcesso;
-     @ManyToOne(fetch = FetchType.LAZY)
-     @JoinColumn(name = "cod_cd")
-     private  DistributionCenter cd;
+
+    @ManyToOne
+    @JoinColumn(name = "cod_cd")
+    private DistributionCenter cdGestor;
+
+     @ManyToMany
+     @JoinTable(name = "tb_admin_cd",
+             joinColumns = @JoinColumn(name = "cod_admin"),
+             inverseJoinColumns = @JoinColumn(name = "cod_cd")
+     )
+     private List<DistributionCenter> cd;
 
      @Column(name = "cod_gestor")
-     private Integer codGestor;
+    private Integer codGestor;
 
-
-
-    public User(String nome, String username, String cpf, String email, String senha, NivelAcesso nivelAcesso, DistributionCenter cd, Integer codGestor) {
+    public User(String nome, String username, String cpf, String email, String senha, NivelAcesso nivelAcesso, DistributionCenter cdGestor, Integer codGestor) {
         this.nome = nome;
         this.username = username;
         this.cpf = cpf;
         this.email = email;
         this.senha = senha;
         this.nivelAcesso = nivelAcesso;
+        this.cdGestor = cdGestor;
+        this.cd = null;
+        this.codGestor = codGestor;
+    }
+
+    public User(String nome, String username, String cpf, String email, String senha, NivelAcesso nivelAcesso, List<DistributionCenter> cd, Integer codGestor) {
+        this.nome = nome;
+        this.username = username;
+        this.cpf = cpf;
+        this.email = email;
+        this.senha = senha;
+        this.nivelAcesso = nivelAcesso;
+        this.cdGestor = null;
         this.cd = cd;
         this.codGestor = codGestor;
     }
 
     public Integer getCdId() {
-        return cd == null ? null : Math.toIntExact(cd.getId());
+        if (cdGestor != null && cdGestor.getId() != null) {
+            return Math.toIntExact(cdGestor.getId());
+        }
+        if (cd != null && !cd.isEmpty() && cd.getFirst().getId() != null) {
+            return Math.toIntExact(cd.getFirst().getId());
+        }
+        return null;
     }
 
     @Override

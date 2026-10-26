@@ -236,7 +236,7 @@ class ColdRoomServiceTest {
     }
 
     private DistributionCenter distributionCenter() {
-        return new DistributionCenter(1L, "Centro Principal", "12345678000199");
+        return new DistributionCenter(1L, "Centro Principal", "12345678000199", null);
     }
 
     private Thermometer thermometer() {
