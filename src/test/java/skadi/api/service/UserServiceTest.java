@@ -287,7 +287,7 @@ class UserServiceTest {
         ResponseEntity<ErrorResponse> response = exceptionHandler.handleResourcesNotFound(erro);
 
         assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-        assertEquals("Administrador não encontrado: 99", response.getBody().message());
+        assertEquals("Usuário não encontrado: 99", response.getBody().message());
     }
 
     @Test
@@ -307,7 +307,7 @@ class UserServiceTest {
         when(repository.findByIdAndNivelAcesso(99L, NivelAcesso.ADMIN)).thenReturn(Optional.empty());
 
         UserNotFoundException erro = assertThrows(UserNotFoundException.class, () -> userService.deleteAdmin(99L));
-        assertEquals("Administrador não encontrado: 99", erro.getMessage());
+        assertEquals("Usuário não encontrado: 99", erro.getMessage());
         verify(repository, never()).delete(any());
     }
 }

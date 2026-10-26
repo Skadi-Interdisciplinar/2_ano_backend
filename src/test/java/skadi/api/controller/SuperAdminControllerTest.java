@@ -167,7 +167,7 @@ class SuperAdminControllerTest {
                         .content(ADMIN_BODY))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.statusCode").value(404))
-                .andExpect(jsonPath("$.message").value("Administrador não encontrado: 99"));
+                .andExpect(jsonPath("$.message").value("Usuário não encontrado: 99"));
     }
 
     @Test
@@ -187,6 +187,6 @@ class SuperAdminControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, SUPER_ADMIN_BEARER))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.statusCode").value(404))
-                .andExpect(jsonPath("$.message").value("Administrador não encontrado: 99"));
+                .andExpect(jsonPath("$.message").value("Usuário não encontrado: 99"));
     }
 }
