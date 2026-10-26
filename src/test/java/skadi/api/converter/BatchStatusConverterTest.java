@@ -12,18 +12,18 @@ class BatchStatusConverterTest {
 
     @Test
     void convertsEnglishApiStatusToPortugueseDatabaseValue() {
-        assertEquals("ativo", converter.convertToDatabaseColumn(BatchStatus.ACTIVE));
-        assertEquals("bloqueado", converter.convertToDatabaseColumn(BatchStatus.BLOCKED));
-        assertEquals("expedido", converter.convertToDatabaseColumn(BatchStatus.SHIPPED));
-        assertEquals("vencido", converter.convertToDatabaseColumn(BatchStatus.EXPIRED));
+        assertEquals("ATIVO", converter.convertToDatabaseColumn(BatchStatus.ACTIVE));
+        assertEquals("BLOQUEADO", converter.convertToDatabaseColumn(BatchStatus.BLOCKED));
+        assertEquals("EXPEDIDO", converter.convertToDatabaseColumn(BatchStatus.SHIPPED));
+        assertEquals("VENDIDO", converter.convertToDatabaseColumn(BatchStatus.SOLD));
     }
 
     @Test
     void convertsPortugueseDatabaseValueToEnglishApiStatus() {
-        assertEquals(BatchStatus.ACTIVE, converter.convertToEntityAttribute("ativo"));
-        assertEquals(BatchStatus.BLOCKED, converter.convertToEntityAttribute("bloqueado"));
-        assertEquals(BatchStatus.SHIPPED, converter.convertToEntityAttribute("expedido"));
-        assertEquals(BatchStatus.EXPIRED, converter.convertToEntityAttribute("vencido"));
+        assertEquals(BatchStatus.ACTIVE, converter.convertToEntityAttribute("ATIVO"));
+        assertEquals(BatchStatus.BLOCKED, converter.convertToEntityAttribute("BLOQUEADO"));
+        assertEquals(BatchStatus.SHIPPED, converter.convertToEntityAttribute("EXPEDIDO"));
+        assertEquals(BatchStatus.SOLD, converter.convertToEntityAttribute("VENDIDO"));
     }
 
     @Test

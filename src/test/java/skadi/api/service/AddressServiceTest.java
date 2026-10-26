@@ -15,6 +15,8 @@ import skadi.api.exceptions.StateNotFoundException;
 import skadi.api.model.Address;
 import skadi.api.model.DistributionCenter;
 import skadi.api.model.State;
+import skadi.api.model.User;
+import skadi.api.enums.NivelAcesso;
 import skadi.api.repository.AddressRepository;
 import skadi.api.repository.DistributionCenterRepository;
 import skadi.api.repository.StateRepository;
@@ -42,11 +44,15 @@ class AddressServiceTest {
     @Mock
     private DistributionCenterRepository distributionCenterRepository;
 
+    @Mock private DistributionCenterAccessService accessService;
+    @Mock private AuditUserContext auditUserContext;
+
     private AddressService service;
 
     @BeforeEach
     void setUp() {
-        service = new AddressService(addressRepository, stateRepository, distributionCenterRepository);
+        service = new AddressService(addressRepository, stateRepository, distributionCenterRepository,
+                accessService, auditUserContext);
     }
 
     @Test
@@ -60,7 +66,7 @@ class AddressServiceTest {
             return address;
         });
 
-        AddressResponse response = service.create(1L, request());
+        AddressResponse response = service.create(1L, request(), admin());
 
         ArgumentCaptor<Address> captor = ArgumentCaptor.forClass(Address.class);
         verify(addressRepository).save(captor.capture());
@@ -75,7 +81,7 @@ class AddressServiceTest {
     void createRejectsDuplicatedZipCode() {
         when(addressRepository.existsByZipCode("01001000")).thenReturn(true);
 
-        assertThrows(AddressAlreadyExistsException.class, () -> service.create(1L, request()));
+        assertThrows(AddressAlreadyExistsException.class, () -> service.create(1L, request(), admin()));
 
         verify(distributionCenterRepository, never()).findById(any());
         verify(addressRepository, never()).save(any());
@@ -86,7 +92,7 @@ class AddressServiceTest {
         when(addressRepository.existsByZipCode("01001000")).thenReturn(false);
         when(distributionCenterRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(CdNotFoundException.class, () -> service.create(99L, request()));
+        assertThrows(CdNotFoundException.class, () -> service.create(99L, request(), admin()));
 
         verify(stateRepository, never()).findById(any());
     }
@@ -97,7 +103,7 @@ class AddressServiceTest {
         when(distributionCenterRepository.findById(1L)).thenReturn(Optional.of(distributionCenter()));
         when(stateRepository.findById(25L)).thenReturn(Optional.empty());
 
-        assertThrows(StateNotFoundException.class, () -> service.create(1L, request()));
+        assertThrows(StateNotFoundException.class, () -> service.create(1L, request(), admin()));
     }
 
     @Test
@@ -106,7 +112,7 @@ class AddressServiceTest {
         when(addressRepository.findAllByDistributionCenterIdOrderByIdAsc(1L))
                 .thenReturn(List.of(address()));
 
-        List<AddressResponse> response = service.findAllByDistributionCenter(1L);
+        List<AddressResponse> response = service.findAllByDistributionCenter(1L, admin());
 
         assertEquals(1, response.size());
         assertEquals(10L, response.getFirst().id());
@@ -116,7 +122,7 @@ class AddressServiceTest {
     void findByIdRejectsUnknownAddress() {
         when(addressRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(AddressNotFoundException.class, () -> service.findById(99L));
+        assertThrows(AddressNotFoundException.class, () -> service.findById(99L, admin()));
     }
 
     @Test
@@ -131,7 +137,7 @@ class AddressServiceTest {
         when(stateRepository.findById(25L)).thenReturn(Optional.of(state()));
         when(addressRepository.save(address)).thenReturn(address);
 
-        AddressResponse response = service.update(10L, request);
+        AddressResponse response = service.update(10L, request, admin());
 
         assertEquals("01310930", response.zipCode());
         assertEquals("Avenida Paulista", response.street());
@@ -143,7 +149,7 @@ class AddressServiceTest {
         when(addressRepository.findById(10L)).thenReturn(Optional.of(address()));
         when(addressRepository.existsByZipCodeAndIdNot("01001000", 10L)).thenReturn(true);
 
-        assertThrows(AddressAlreadyExistsException.class, () -> service.update(10L, request()));
+        assertThrows(AddressAlreadyExistsException.class, () -> service.update(10L, request(), admin()));
 
         verify(stateRepository, never()).findById(any());
     }
@@ -153,7 +159,7 @@ class AddressServiceTest {
         Address address = address();
         when(addressRepository.findById(10L)).thenReturn(Optional.of(address));
 
-        service.delete(10L);
+        service.delete(10L, admin());
 
         verify(addressRepository).delete(address);
         verify(addressRepository).flush();
@@ -179,5 +185,10 @@ class AddressServiceTest {
 
     private DistributionCenter distributionCenter() {
         return new DistributionCenter(1L, "CD São Paulo", "48372615000194", null);
+    }
+
+    private User admin() {
+        return new User(20L, "Admin", "admin", "12345678901", "admin@skadi.com",
+                "senha", NivelAcesso.ADMIN, null, null);
     }
 }

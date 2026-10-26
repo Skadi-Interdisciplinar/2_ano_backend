@@ -49,7 +49,7 @@ class ColdRoomControllerTest {
 
     @Test
     void createReturns201AndCreatedColdRoom() throws Exception {
-        when(service.create(any())).thenReturn(coldRoom());
+        when(service.create(any(), any())).thenReturn(coldRoom());
 
         mockMvc.perform(post("/cold-room")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -82,7 +82,7 @@ class ColdRoomControllerTest {
 
     @Test
     void createReturns400WhenTemperatureRangeIsInvalid() throws Exception {
-        when(service.create(any())).thenThrow(new ColdRoomInvalidTemperatureRangeException());
+        when(service.create(any(), any())).thenThrow(new ColdRoomInvalidTemperatureRangeException());
 
         mockMvc.perform(post("/cold-room")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -94,7 +94,7 @@ class ColdRoomControllerTest {
 
     @Test
     void findAllReturnsColdRooms() throws Exception {
-        when(service.findAll()).thenReturn(List.of(coldRoom()));
+        when(service.findAll(any())).thenReturn(List.of(coldRoom()));
 
         mockMvc.perform(get("/cold-rooms"))
                 .andExpect(status().isOk())
@@ -103,7 +103,7 @@ class ColdRoomControllerTest {
 
     @Test
     void findByIdReturnsColdRoom() throws Exception {
-        when(service.findById(3L)).thenReturn(coldRoom());
+        when(service.findById(eq(3L), any())).thenReturn(coldRoom());
 
         mockMvc.perform(get("/cold-rooms/3"))
                 .andExpect(status().isOk())
@@ -112,7 +112,7 @@ class ColdRoomControllerTest {
 
     @Test
     void findByIdReturns404WhenColdRoomDoesNotExist() throws Exception {
-        when(service.findById(99L)).thenThrow(new ColdRoomNotFoundException(99L));
+        when(service.findById(eq(99L), any())).thenThrow(new ColdRoomNotFoundException(99L));
 
         mockMvc.perform(get("/cold-rooms/99"))
                 .andExpect(status().isNotFound())
@@ -121,7 +121,7 @@ class ColdRoomControllerTest {
 
     @Test
     void updateReturnsUpdatedColdRoom() throws Exception {
-        when(service.update(eq(3L), any())).thenReturn(coldRoom());
+        when(service.update(eq(3L), any(), any())).thenReturn(coldRoom());
 
         mockMvc.perform(put("/cold-rooms/3")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -132,7 +132,7 @@ class ColdRoomControllerTest {
 
     @Test
     void deleteReturns204() throws Exception {
-        doNothing().when(service).delete(3L);
+        doNothing().when(service).delete(eq(3L), any());
 
         mockMvc.perform(delete("/cold-rooms/3"))
                 .andExpect(status().isNoContent());
@@ -142,7 +142,7 @@ class ColdRoomControllerTest {
     void deleteReturns409WhenColdRoomHasRelatedData() throws Exception {
         doThrow(new ColdRoomRuleViolationException(
                 "A câmara frigorífica não pode ser excluída porque possui alertas relacionados"))
-                .when(service).delete(3L);
+                .when(service).delete(eq(3L), any());
 
         mockMvc.perform(delete("/cold-rooms/3"))
                 .andExpect(status().isConflict())

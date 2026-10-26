@@ -47,7 +47,7 @@ class BatchControllerTest {
 
     @Test
     void createReturns201AndCreatedBatch() throws Exception {
-        when(service.create(any())).thenReturn(batch());
+        when(service.create(any(), any())).thenReturn(batch());
 
         mockMvc.perform(post("/batches")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -79,7 +79,7 @@ class BatchControllerTest {
 
     @Test
     void findAllReturnsBatches() throws Exception {
-        when(service.findAll()).thenReturn(List.of(batch()));
+        when(service.findAll(any())).thenReturn(List.of(batch()));
 
         mockMvc.perform(get("/batches"))
                 .andExpect(status().isOk())
@@ -88,7 +88,7 @@ class BatchControllerTest {
 
     @Test
     void findByIdReturnsBatch() throws Exception {
-        when(service.findById(1L)).thenReturn(batch());
+        when(service.findById(eq(1L), any())).thenReturn(batch());
 
         mockMvc.perform(get("/batches/1"))
                 .andExpect(status().isOk())
@@ -97,7 +97,7 @@ class BatchControllerTest {
 
     @Test
     void updateReturnsUpdatedBatch() throws Exception {
-        when(service.update(eq(1L), any())).thenReturn(batch());
+        when(service.update(eq(1L), any(), any())).thenReturn(batch());
 
         mockMvc.perform(put("/batches/1")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -117,7 +117,7 @@ class BatchControllerTest {
                 LocalDate.of(2026, 10, 31),
                 BatchStatus.BLOCKED
         );
-        when(service.updateStatus(1L, BatchStatus.BLOCKED)).thenReturn(blockedBatch);
+        when(service.updateStatus(eq(1L), eq(BatchStatus.BLOCKED), any())).thenReturn(blockedBatch);
 
         mockMvc.perform(patch("/batches/1/status")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -145,7 +145,7 @@ class BatchControllerTest {
 
     @Test
     void deleteReturns204() throws Exception {
-        doNothing().when(service).delete(1L);
+        doNothing().when(service).delete(eq(1L), any());
 
         mockMvc.perform(delete("/batches/1"))
                 .andExpect(status().isNoContent());
@@ -168,6 +168,7 @@ class BatchControllerTest {
                 {
                   "batchCode": "BATCH-001",
                   "categoryId": 1,
+                  "coldRoomId": 3,
                   "manufacturingDate": "2026-10-01",
                   "expirationDate": "2026-10-31"
                 }

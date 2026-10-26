@@ -6,12 +6,18 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import skadi.api.model.ColdRoom;
 
+import java.util.Collection;
+import java.util.List;
+
 @Repository
 public interface ColdRoomRepository extends JpaRepository<ColdRoom, Long> {
 
     boolean existsByThermometer_Id(Long thermometerId);
 
     boolean existsByThermometer_IdAndIdNot(Long thermometerId, Long id);
+
+    List<ColdRoom> findAllByDistributionCenter_IdInOrderByLocationAscModelAscIdAsc(
+            Collection<Long> distributionCenterIds);
 
     @Query(value = """
             SELECT EXISTS (

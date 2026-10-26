@@ -33,6 +33,8 @@ import java.util.List;
 
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -77,7 +79,7 @@ class AlertControllerTest {
 
     @Test
     void findAll_returnsAlerts() throws Exception {
-        when(service.findAll(null)).thenReturn(List.of(alert(AlertStatus.ATIVO)));
+        when(service.findAll(org.mockito.ArgumentMatchers.isNull(), any())).thenReturn(List.of(alert(AlertStatus.ATIVO)));
 
         mockMvc.perform(get("/alerts"))
                 .andExpect(status().isOk())
@@ -87,7 +89,7 @@ class AlertControllerTest {
 
     @Test
     void findAll_acceptsColdRoomFilter() throws Exception {
-        when(service.findAll(3)).thenReturn(List.of(alert(AlertStatus.RECONHECIDO)));
+        when(service.findAll(eq(3), any())).thenReturn(List.of(alert(AlertStatus.RECONHECIDO)));
 
         mockMvc.perform(get("/alerts").param("coldRoomId", "3"))
                 .andExpect(status().isOk())
@@ -96,7 +98,7 @@ class AlertControllerTest {
 
     @Test
     void findHistory_returnsResolvedAlerts() throws Exception {
-        when(service.findHistory(null)).thenReturn(List.of(alert(AlertStatus.RESOLVIDO)));
+        when(service.findHistory(org.mockito.ArgumentMatchers.isNull(), any())).thenReturn(List.of(alert(AlertStatus.RESOLVIDO)));
 
         mockMvc.perform(get("/alerts/history"))
                 .andExpect(status().isOk())
@@ -105,7 +107,7 @@ class AlertControllerTest {
 
     @Test
     void findHistory_acceptsColdRoomFilter() throws Exception {
-        when(service.findHistory(3)).thenReturn(List.of(alert(AlertStatus.RESOLVIDO)));
+        when(service.findHistory(eq(3), any())).thenReturn(List.of(alert(AlertStatus.RESOLVIDO)));
 
         mockMvc.perform(get("/alerts/history").param("coldRoomId", "3"))
                 .andExpect(status().isOk())
@@ -114,7 +116,7 @@ class AlertControllerTest {
 
     @Test
     void findById_returnsAlert() throws Exception {
-        when(service.findById(1)).thenReturn(alert(AlertStatus.ATIVO));
+        when(service.findById(eq(1), any())).thenReturn(alert(AlertStatus.ATIVO));
 
         mockMvc.perform(get("/alerts/1"))
                 .andExpect(status().isOk())
@@ -123,7 +125,7 @@ class AlertControllerTest {
 
     @Test
     void findById_returnsNotFoundWhenAlertDoesNotExist() throws Exception {
-        when(service.findById(99)).thenThrow(new AlertNotFoundException(99));
+        when(service.findById(eq(99), any())).thenThrow(new AlertNotFoundException(99));
 
         mockMvc.perform(get("/alerts/99"))
                 .andExpect(status().isNotFound())

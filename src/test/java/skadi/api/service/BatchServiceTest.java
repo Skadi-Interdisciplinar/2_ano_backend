@@ -16,11 +16,20 @@ import skadi.api.exceptions.BatchRuleViolationException;
 import skadi.api.exceptions.CategoryNotFoundException;
 import skadi.api.model.Batch;
 import skadi.api.model.Category;
+import skadi.api.model.BatchStorage;
+import skadi.api.model.ColdRoom;
+import skadi.api.model.DistributionCenter;
+import skadi.api.model.Thermometer;
+import skadi.api.model.User;
+import skadi.api.enums.NivelAcesso;
 import skadi.api.repository.BatchRepository;
+import skadi.api.repository.BatchStorageRepository;
 import skadi.api.repository.CategoryRepository;
+import skadi.api.repository.ColdRoomRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Duration;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,11 +48,17 @@ class BatchServiceTest {
     @Mock
     private CategoryRepository categoryRepository;
 
+    @Mock private BatchStorageRepository storageRepository;
+    @Mock private ColdRoomRepository coldRoomRepository;
+    @Mock private DistributionCenterAccessService accessService;
+    @Mock private AuditUserContext auditUserContext;
+
     private BatchService service;
 
     @BeforeEach
     void setUp() {
-        service = new BatchService(batchRepository, categoryRepository);
+        service = new BatchService(batchRepository, categoryRepository, storageRepository,
+                coldRoomRepository, accessService, auditUserContext);
     }
 
     @Test
@@ -52,13 +67,16 @@ class BatchServiceTest {
         Category category = category(1L, "Congelados");
         when(batchRepository.existsByBatchCodeIgnoreCase("BATCH-001")).thenReturn(false);
         when(categoryRepository.findById(1L)).thenReturn(Optional.of(category));
+        when(coldRoomRepository.findById(3L)).thenReturn(Optional.of(coldRoom()));
         when(batchRepository.save(any(Batch.class))).thenAnswer(invocation -> {
             Batch batch = invocation.getArgument(0);
             batch.setId(1L);
             return batch;
         });
 
-        BatchResponse response = service.create(request);
+        when(storageRepository.saveAndFlush(any(BatchStorage.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        BatchResponse response = service.create(request, operator());
 
         ArgumentCaptor<Batch> captor = ArgumentCaptor.forClass(Batch.class);
         verify(batchRepository).save(captor.capture());
@@ -74,7 +92,7 @@ class BatchServiceTest {
         BatchRequest request = request("BATCH-001", 1L);
         when(batchRepository.existsByBatchCodeIgnoreCase("BATCH-001")).thenReturn(true);
 
-        assertThrows(BatchAlreadyExistsException.class, () -> service.create(request));
+        assertThrows(BatchAlreadyExistsException.class, () -> service.create(request, operator()));
         verify(categoryRepository, never()).findById(any());
     }
 
@@ -84,10 +102,11 @@ class BatchServiceTest {
                 "BATCH-001",
                 1L,
                 LocalDate.of(2026, 10, 10),
-                LocalDate.of(2026, 10, 9)
+                LocalDate.of(2026, 10, 9),
+                3L
         );
 
-        assertThrows(BatchInvalidDatesException.class, () -> service.create(request));
+        assertThrows(BatchInvalidDatesException.class, () -> service.create(request, operator()));
         verify(batchRepository, never()).save(any());
     }
 
@@ -97,15 +116,17 @@ class BatchServiceTest {
         when(batchRepository.existsByBatchCodeIgnoreCase("BATCH-001")).thenReturn(false);
         when(categoryRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(CategoryNotFoundException.class, () -> service.create(request));
+        assertThrows(CategoryNotFoundException.class, () -> service.create(request, operator()));
     }
 
     @Test
     void findByIdReturnsBatch() {
         Batch batch = batch();
         when(batchRepository.findById(1L)).thenReturn(Optional.of(batch));
+        when(storageRepository.findFirstByBatch_IdOrderByEntryDateAsc(1L))
+                .thenReturn(Optional.of(storage()));
 
-        BatchResponse response = service.findById(1L);
+        BatchResponse response = service.findById(1L, operator());
 
         assertEquals(batch.getId(), response.id());
         assertEquals(batch.getCategory().getName(), response.categoryName());
@@ -115,7 +136,7 @@ class BatchServiceTest {
     void findByIdRejectsUnknownId() {
         when(batchRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(BatchNotFoundException.class, () -> service.findById(99L));
+        assertThrows(BatchNotFoundException.class, () -> service.findById(99L, operator()));
     }
 
     @Test
@@ -124,12 +145,14 @@ class BatchServiceTest {
         Category newCategory = category(2L, "Resfriados");
         BatchRequest request = request("BATCH-UPDATED", 2L);
         when(batchRepository.findById(1L)).thenReturn(Optional.of(batch));
+        when(storageRepository.findFirstByBatch_IdOrderByEntryDateAsc(1L))
+                .thenReturn(Optional.of(storage()));
         when(batchRepository.existsByBatchCodeIgnoreCaseAndIdNot("BATCH-UPDATED", 1L)).thenReturn(false);
         when(batchRepository.hasActiveStorage(1L)).thenReturn(false);
         when(categoryRepository.findById(2L)).thenReturn(Optional.of(newCategory));
         when(batchRepository.save(batch)).thenReturn(batch);
 
-        BatchResponse response = service.update(1L, request);
+        BatchResponse response = service.update(1L, request, operator());
 
         assertEquals("BATCH-UPDATED", response.batchCode());
         assertEquals(2L, response.categoryId());
@@ -141,10 +164,12 @@ class BatchServiceTest {
         Batch batch = batch();
         BatchRequest request = request("BATCH-001", 2L);
         when(batchRepository.findById(1L)).thenReturn(Optional.of(batch));
+        when(storageRepository.findFirstByBatch_IdOrderByEntryDateAsc(1L))
+                .thenReturn(Optional.of(storage()));
         when(batchRepository.existsByBatchCodeIgnoreCaseAndIdNot("BATCH-001", 1L)).thenReturn(false);
         when(batchRepository.hasActiveStorage(1L)).thenReturn(true);
 
-        assertThrows(BatchRuleViolationException.class, () -> service.update(1L, request));
+        assertThrows(BatchRuleViolationException.class, () -> service.update(1L, request, operator()));
         verify(categoryRepository, never()).findById(2L);
     }
 
@@ -152,9 +177,11 @@ class BatchServiceTest {
     void updateStatusChangesStatus() {
         Batch batch = batch();
         when(batchRepository.findById(1L)).thenReturn(Optional.of(batch));
+        when(storageRepository.findFirstByBatch_IdOrderByEntryDateAsc(1L))
+                .thenReturn(Optional.of(storage()));
         when(batchRepository.save(batch)).thenReturn(batch);
 
-        BatchResponse response = service.updateStatus(1L, BatchStatus.BLOCKED);
+        BatchResponse response = service.updateStatus(1L, BatchStatus.BLOCKED, operator());
 
         assertEquals(BatchStatus.BLOCKED, response.status());
     }
@@ -163,9 +190,11 @@ class BatchServiceTest {
     void deleteRejectsBatchWithStorageHistory() {
         Batch batch = batch();
         when(batchRepository.findById(1L)).thenReturn(Optional.of(batch));
+        when(storageRepository.findFirstByBatch_IdOrderByEntryDateAsc(1L))
+                .thenReturn(Optional.of(storage()));
         when(batchRepository.hasStorageHistory(1L)).thenReturn(true);
 
-        assertThrows(BatchRuleViolationException.class, () -> service.delete(1L));
+        assertThrows(BatchRuleViolationException.class, () -> service.delete(1L, operator()));
         verify(batchRepository, never()).delete(any());
     }
 
@@ -173,9 +202,11 @@ class BatchServiceTest {
     void deleteRemovesBatchWithoutStorageHistory() {
         Batch batch = batch();
         when(batchRepository.findById(1L)).thenReturn(Optional.of(batch));
+        when(storageRepository.findFirstByBatch_IdOrderByEntryDateAsc(1L))
+                .thenReturn(Optional.of(storage()));
         when(batchRepository.hasStorageHistory(1L)).thenReturn(false);
 
-        service.delete(1L);
+        service.delete(1L, operator());
 
         verify(batchRepository).delete(batch);
         verify(batchRepository).flush();
@@ -186,7 +217,8 @@ class BatchServiceTest {
                 batchCode,
                 categoryId,
                 LocalDate.of(2026, 10, 1),
-                LocalDate.of(2026, 10, 31)
+                LocalDate.of(2026, 10, 31),
+                3L
         );
     }
 
@@ -205,8 +237,26 @@ class BatchServiceTest {
         return new Category(
                 id,
                 name,
-                new BigDecimal("-18.00"),
-                new BigDecimal("720.00")
+                new BigDecimal("-20.00"),
+                new BigDecimal("-10.00"),
+                Duration.ofHours(720)
         );
+    }
+
+    private BatchStorage storage() {
+        return new BatchStorage(10L, batch(), coldRoom(), java.time.LocalDateTime.now(), null);
+    }
+
+    private ColdRoom coldRoom() {
+        return new ColdRoom(3L, "Câmara", "Corredor A",
+                new BigDecimal("-20.00"), new BigDecimal("-10.00"),
+                new DistributionCenter(5L, "CD", "12345678000199"),
+                new Thermometer(7L, "DHT22"));
+    }
+
+    private User operator() {
+        return new User(50L, "Operador", "operador", "12345678901", "op@skadi.com",
+                "senha", NivelAcesso.OPERADOR,
+                new DistributionCenter(5L, "CD", "12345678000199"), 60);
     }
 }

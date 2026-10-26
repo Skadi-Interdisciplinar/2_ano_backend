@@ -3,6 +3,7 @@ package skadi.api.controller;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import skadi.api.dto.CategoryRequest;
 import skadi.api.dto.CategoryResponse;
 import skadi.api.service.CategoryService;
+import skadi.api.model.User;
 
 import java.net.URI;
 import java.util.List;
@@ -27,9 +29,10 @@ public class CategoryController {
 
     @PostMapping
     public ResponseEntity<CategoryResponse> create(
-            @Valid @RequestBody CategoryRequest request
+            @Valid @RequestBody CategoryRequest request,
+            @AuthenticationPrincipal User user
     ) {
-        CategoryResponse response = service.create(request);
+        CategoryResponse response = service.create(request, user);
         return ResponseEntity.created(URI.create("/categories/" + response.id()))
                 .body(response);
     }
@@ -47,14 +50,18 @@ public class CategoryController {
     @PutMapping("/{id}")
     public ResponseEntity<CategoryResponse> update(
             @PathVariable Long id,
-            @Valid @RequestBody CategoryRequest request
+            @Valid @RequestBody CategoryRequest request,
+            @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.update(id, request));
+        return ResponseEntity.ok(service.update(id, request, user));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        service.delete(id);
+    public ResponseEntity<Void> delete(
+            @PathVariable Long id,
+            @AuthenticationPrincipal User user
+    ) {
+        service.delete(id, user);
         return ResponseEntity.noContent().build();
     }
 }

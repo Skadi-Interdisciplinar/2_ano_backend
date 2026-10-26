@@ -26,8 +26,9 @@ public class JustificationController {
 
     @GetMapping
     public ResponseEntity<JustificationResponse> findByAlertHandlingId(
-            @PathVariable Integer alertHandlingId) {
-        return ResponseEntity.ok(service.findByAlertHandlingId(alertHandlingId));
+            @PathVariable Integer alertHandlingId,
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(service.findByAlertHandlingId(alertHandlingId, user));
     }
 
     @PostMapping
@@ -36,7 +37,7 @@ public class JustificationController {
             @AuthenticationPrincipal User user,
             @Valid @RequestBody JustificationRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(service.create(alertHandlingId, request, Math.toIntExact(user.getId())));
+                .body(service.create(alertHandlingId, request, user));
     }
 
     @PatchMapping
@@ -44,8 +45,7 @@ public class JustificationController {
             @PathVariable Integer alertHandlingId,
             @AuthenticationPrincipal User user,
             @Valid @RequestBody JustificationPatchRequest request) {
-        return ResponseEntity.ok(service.update(
-                alertHandlingId, request, Math.toIntExact(user.getId())));
+        return ResponseEntity.ok(service.update(alertHandlingId, request, user));
     }
 
 }
