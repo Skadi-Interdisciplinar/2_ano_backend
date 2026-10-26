@@ -1,5 +1,6 @@
 package skadi.api.controller;
 
+import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -10,13 +11,11 @@ import skadi.api.dto.*;
 import skadi.api.model.User;
 import skadi.api.service.UserService;
 
+@AllArgsConstructor
 @RestController
 public class UserController {
     private final UserService service;
 
-    public UserController(UserService service) {
-        this.service = service;
-    }
 
     @PostMapping("/auth/register")
     public ResponseEntity<Void> register(@RequestBody RegisterRequest dto){

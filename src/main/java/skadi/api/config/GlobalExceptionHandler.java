@@ -34,6 +34,7 @@ import skadi.api.exceptions.ColdRoomNotFoundException;
 import skadi.api.exceptions.TemperatureReadingNotFoundException;
 import skadi.api.exceptions.CurrentTemperatureNotFoundException;
 import skadi.api.exceptions.UserAlreadyExistsException;
+import skadi.api.exceptions.UserNotFoundException;
 import skadi.api.exceptions.AddressAlreadyExistsException;
 import skadi.api.exceptions.AddressNotFoundException;
 import skadi.api.exceptions.StateNotFoundException;
@@ -63,7 +64,8 @@ public class GlobalExceptionHandler {
         AddressNotFoundException.class,
         StateNotFoundException.class,
         ThermometerNotFoundException.class,
-        NotificationNotFoundException.class})
+        NotificationNotFoundException.class,
+        UserNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleResourcesNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage(), Timestamp.from(Instant.now())));

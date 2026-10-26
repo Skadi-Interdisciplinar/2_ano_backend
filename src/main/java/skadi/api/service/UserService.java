@@ -11,19 +11,16 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import skadi.api.config.TokenProvider;
-import skadi.api.dto.LoginRequest;
-import skadi.api.dto.RegisterRequest;
-import skadi.api.dto.RegisterResponse;
-import skadi.api.dto.TokenResponse;
+import skadi.api.dto.*;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.exceptions.UserAlreadyExistsException;
+import skadi.api.exceptions.UserNotFoundException;
 import skadi.api.mapper.UserMapper;
 import skadi.api.model.User;
 import skadi.api.repository.UserRepository;
 
 import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.ZoneOffset;
 
 @Service
 @RequiredArgsConstructor
@@ -76,5 +73,64 @@ public class UserService {
     catch(Exception e){
             throw new RuntimeException("Erro inesperado: " + e);
     }
+    }
+
+
+    public AdminListResponse getAdminsSvc(){
+        return UserMapper.toAdminListDTO(repository.findAllByNivelAcesso(NivelAcesso.ADMIN));
+    }
+
+    public UserResponse createAdmin(RegisterRequest request){
+        ensureAdminRole(request);
+        if (repository.existsByUsername(request.username())) {
+            throw new UserAlreadyExistsException("Nome de usuário já utilizado");
+        }
+        if (repository.existsByEmail(request.email())) {
+            throw new UserAlreadyExistsException("Email já utilizado");
+        }
+        if (repository.existsByCpf(request.cpf())) {
+            throw new UserAlreadyExistsException("Cpf já utilizado");
+        }
+
+        User user = UserMapper.fromDTO(request);
+        user.setSenha(passwordEncoder.encode(request.senha()));
+        return UserMapper.toUserDTO(repository.save(user));
+    }
+
+    public UserResponse updateAdmin(Long id, RegisterRequest request){
+        ensureAdminRole(request);
+        User admin = findAdminById(id);
+
+        if (!admin.getUsername().equals(request.username()) && repository.existsByUsername(request.username())) {
+            throw new UserAlreadyExistsException("Nome de usuário já utilizado");
+        }
+        if (!admin.getEmail().equals(request.email()) && repository.existsByEmail(request.email())) {
+            throw new UserAlreadyExistsException("Email já utilizado");
+        }
+        if (!admin.getCpf().equals(request.cpf()) && repository.existsByCpf(request.cpf())) {
+            throw new UserAlreadyExistsException("Cpf já utilizado");
+        }
+
+        UserMapper.updateAdminFromDTO(admin, request);
+        if (request.senha() != null && !request.senha().isBlank()) {
+            admin.setSenha(passwordEncoder.encode(request.senha()));
+        }
+        return UserMapper.toUserDTO(repository.save(admin));
+    }
+
+    public void deleteAdmin(Long id){
+        User admin = findAdminById(id);
+        repository.delete(admin);
+    }
+
+    private User findAdminById(Long id) {
+        return repository.findByIdAndNivelAcesso(id, NivelAcesso.ADMIN)
+                .orElseThrow(() -> new UserNotFoundException(id));
+    }
+
+    private void ensureAdminRole(RegisterRequest request) {
+        if (request.nivelAcesso() != NivelAcesso.ADMIN) {
+            throw new AccessDeniedException("SUPER_ADMIN cadastra apenas ADMIN");
+        }
     }
 }

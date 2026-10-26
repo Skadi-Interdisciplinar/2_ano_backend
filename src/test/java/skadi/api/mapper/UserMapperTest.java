@@ -112,4 +112,66 @@ class UserMapperTest {
         assertNull(dto.cd());
         assertEquals(2, dto.codGestor());
     }
+
+    @Test
+    void toUserDTO_copiesAdminFieldsWithoutPassword() {
+        DistributionCenter osasco = new DistributionCenter(7L, "CD 7", "12345678901234", null);
+        User user = new User(3L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha",
+                NivelAcesso.ADMIN, null, List.of(osasco), 10);
+
+        var dto = UserMapper.toUserDTO(user);
+
+        assertEquals(3L, dto.id());
+        assertEquals("Enzo", dto.nome());
+        assertEquals("enzo", dto.username());
+        assertEquals("enzo@email.com", dto.email());
+        assertEquals(NivelAcesso.ADMIN, dto.nivelAcesso());
+        assertEquals(List.of(osasco), dto.cd());
+    }
+
+    @Test
+    void toAdminListDTO_setsTotalAndMapsUsers() {
+        DistributionCenter osasco = new DistributionCenter(7L, "CD 7", "12345678901234", null);
+        User admin = new User(3L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha",
+                NivelAcesso.ADMIN, null, List.of(osasco), 10);
+
+        var dto = UserMapper.toAdminListDTO(List.of(admin));
+
+        assertEquals(1, dto.total());
+        assertEquals(1, dto.usuarios().size());
+        assertEquals("enzo", dto.usuarios().getFirst().username());
+        assertEquals(List.of(osasco), dto.usuarios().getFirst().cd());
+    }
+
+    @Test
+    void toAdminListDTO_returnsZeroWhenListIsEmpty() {
+        var dto = UserMapper.toAdminListDTO(List.of());
+
+        assertEquals(0, dto.total());
+        assertEquals(List.of(), dto.usuarios());
+    }
+
+    @Test
+    void updateAdminFromDTO_overwritesAdminFieldsAndKeepsUniqueCdNull() {
+        DistributionCenter osasco = new DistributionCenter(7L, "CD 7", "12345678901234", null);
+        DistributionCenter barueri = new DistributionCenter(8L, "CD Barueri", "12345678901235", null);
+        User admin = new User(3L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha",
+                NivelAcesso.ADMIN, null, List.of(osasco), 10);
+        RegisterRequest request = new RegisterRequest(
+                "Enzo Atualizado", "enzo.novo", "10987654321", "novo@email.com", "novaSenha",
+                NivelAcesso.ADMIN, osasco, List.of(barueri), 20
+        );
+
+        UserMapper.updateAdminFromDTO(admin, request);
+
+        assertEquals("Enzo Atualizado", admin.getNome());
+        assertEquals("enzo.novo", admin.getUsername());
+        assertEquals("10987654321", admin.getCpf());
+        assertEquals("novo@email.com", admin.getEmail());
+        assertEquals("senha", admin.getSenha());
+        assertEquals(NivelAcesso.ADMIN, admin.getNivelAcesso());
+        assertNull(admin.getCdGestor());
+        assertEquals(List.of(barueri), admin.getCd());
+        assertEquals(20, admin.getCodGestor());
+    }
 }
