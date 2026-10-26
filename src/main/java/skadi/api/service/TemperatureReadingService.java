@@ -17,7 +17,9 @@ import skadi.api.exceptions.TemperatureReadingNotFoundException;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.repository.TemperatureReadingRepository;
 import skadi.api.repository.ColdRoomRepository;
+import skadi.api.repository.ThermometerRepository;
 import skadi.api.model.User;
+import skadi.api.exceptions.ThermometerNotFoundException;
 
 import java.time.OffsetDateTime;
 import java.time.LocalDateTime;
@@ -38,6 +40,7 @@ public class TemperatureReadingService {
     private final TemperatureReadingRepository repository;
     private final ColdRoomRepository coldRoomRepository;
     private final DistributionCenterAccessService accessService;
+    private final ThermometerRepository thermometerRepository;
 
     @Value("${skadi.redis.temperature-stream}")
     private String temperatureStream;
@@ -45,7 +48,13 @@ public class TemperatureReadingService {
     @Value("${skadi.redis.temperature-retention-hours:72}")
     private long temperatureRetentionHours;
 
-    public TemperatureReadingResponse publish(TemperatureReadingRequest request) {
+    public TemperatureReadingResponse publish(TemperatureReadingRequest request, User user) {
+        accessService.requireRole(user, NivelAcesso.ADMIN,
+                "Somente ADMIN pode enviar leituras de temperatura.");
+        Long distributionCenterId = thermometerRepository.findDistributionCenterId(request.thermometerId())
+                .orElseThrow(() -> new ThermometerNotFoundException(request.thermometerId()));
+        accessService.requireAdminOwnership(user, distributionCenterId);
+
         String eventId = eventIdFor(request);
         Map<String, String> fields = new LinkedHashMap<>();
         fields.put("id_evento_redis", eventId);

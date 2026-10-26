@@ -31,9 +31,10 @@ public class TemperatureReadingController {
 
     @PostMapping
     public ResponseEntity<TemperatureReadingResponse> publish(
-            @Valid @RequestBody TemperatureReadingRequest request
+            @Valid @RequestBody TemperatureReadingRequest request,
+            @AuthenticationPrincipal User user
     ) {
-        TemperatureReadingResponse response = service.publish(request);
+        TemperatureReadingResponse response = service.publish(request, user);
         return ResponseEntity.accepted().body(response);
     }
 

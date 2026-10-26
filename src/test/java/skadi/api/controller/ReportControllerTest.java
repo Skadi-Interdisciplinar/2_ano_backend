@@ -86,7 +86,7 @@ class ReportControllerTest {
 
     @Test
     void create_returnsCreatedReportAndUsesAuthenticatedUserAsAuthor() throws Exception {
-        when(service.create(any(ReportRequest.class), eq(7))).thenReturn(response());
+        when(service.create(any(ReportRequest.class), eq(user))).thenReturn(response());
 
         mockMvc.perform(post("/reports")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -96,7 +96,7 @@ class ReportControllerTest {
                 .andExpect(jsonPath("$.generatedByUserId").value(7))
                 .andExpect(jsonPath("$.status").value("GERADO"));
 
-        verify(service).create(any(ReportRequest.class), eq(7));
+        verify(service).create(any(ReportRequest.class), eq(user));
     }
 
     @Test
@@ -107,7 +107,8 @@ class ReportControllerTest {
                                 {
                                   "content": " ",
                                   "periodStart": "2026-09-01",
-                                  "periodEnd": "2026-09-30"
+                                  "periodEnd": "2026-09-30",
+                                  "distributionCenterId": 1
                                 }
                                 """))
                 .andExpect(status().isBadRequest());
@@ -123,7 +124,8 @@ class ReportControllerTest {
                                 {
                                   "content": "Relatório de teste",
                                   "periodStart": null,
-                                  "periodEnd": "2026-09-30"
+                                  "periodEnd": "2026-09-30",
+                                  "distributionCenterId": 1
                                 }
                                 """))
                 .andExpect(status().isBadRequest());
@@ -133,19 +135,19 @@ class ReportControllerTest {
 
     @Test
     void findAll_returnsReports() throws Exception {
-        when(service.findAll(1, NivelAcesso.GESTOR)).thenReturn(List.of(response()));
+        when(service.findAll(user)).thenReturn(List.of(response()));
 
         mockMvc.perform(get("/reports"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(12))
                 .andExpect(jsonPath("$[0].contentHash").value("hash-de-teste"));
 
-        verify(service).findAll(1, NivelAcesso.GESTOR);
+        verify(service).findAll(user);
     }
 
     @Test
     void findAll_returnsEmptyListWhenThereAreNoReports() throws Exception {
-        when(service.findAll(1, NivelAcesso.GESTOR)).thenReturn(List.of());
+        when(service.findAll(user)).thenReturn(List.of());
 
         mockMvc.perform(get("/reports"))
                 .andExpect(status().isOk())
@@ -154,19 +156,19 @@ class ReportControllerTest {
 
     @Test
     void findById_returnsReport() throws Exception {
-        when(service.findById(12, 1, NivelAcesso.GESTOR)).thenReturn(response());
+        when(service.findById(12, user)).thenReturn(response());
 
         mockMvc.perform(get("/reports/12"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(12))
                 .andExpect(jsonPath("$.content").value("Relatório de teste"));
 
-        verify(service).findById(12, 1, NivelAcesso.GESTOR);
+        verify(service).findById(12, user);
     }
 
     @Test
     void findById_returnsNotFoundWhenReportDoesNotExist() throws Exception {
-        when(service.findById(99, 1, NivelAcesso.GESTOR)).thenThrow(new ReportNotFoundException(99));
+        when(service.findById(99, user)).thenThrow(new ReportNotFoundException(99));
 
         mockMvc.perform(get("/reports/99"))
                 .andExpect(status().isNotFound());
@@ -174,7 +176,7 @@ class ReportControllerTest {
 
     @Test
     void update_returnsUpdatedReportForAuthenticatedAuthor() throws Exception {
-        when(service.update(eq(12), any(ReportPatchRequest.class), eq(7))).thenReturn(response());
+        when(service.update(eq(12), any(ReportPatchRequest.class), eq(user))).thenReturn(response());
 
         mockMvc.perform(patch("/reports/12")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -182,12 +184,12 @@ class ReportControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(12));
 
-        verify(service).update(eq(12), any(ReportPatchRequest.class), eq(7));
+        verify(service).update(eq(12), any(ReportPatchRequest.class), eq(user));
     }
 
     @Test
     void update_returnsConflictWhenPeriodIsInvalid() throws Exception {
-        when(service.update(eq(12), any(ReportPatchRequest.class), eq(7)))
+        when(service.update(eq(12), any(ReportPatchRequest.class), eq(user)) )
                 .thenThrow(new ReportRuleViolationException("Período inválido"));
 
         mockMvc.perform(patch("/reports/12")
@@ -204,7 +206,7 @@ class ReportControllerTest {
 
     @Test
     void update_acceptsPartialPatchBody() throws Exception {
-        when(service.update(eq(12), any(ReportPatchRequest.class), eq(7))).thenReturn(response());
+        when(service.update(eq(12), any(ReportPatchRequest.class), eq(user))).thenReturn(response());
 
         mockMvc.perform(patch("/reports/12")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -212,7 +214,7 @@ class ReportControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(12));
 
-        verify(service).update(eq(12), any(ReportPatchRequest.class), eq(7));
+        verify(service).update(eq(12), any(ReportPatchRequest.class), eq(user));
     }
 
     @Test
@@ -220,13 +222,13 @@ class ReportControllerTest {
         mockMvc.perform(delete("/reports/12"))
                 .andExpect(status().isNoContent());
 
-        verify(service).delete(12, 7);
+        verify(service).delete(12, user);
     }
 
     @Test
     void delete_returnsConflictWhenReportCannotBeDeleted() throws Exception {
         org.mockito.Mockito.doThrow(new ReportRuleViolationException("Relatório assinado"))
-                .when(service).delete(12, 7);
+                .when(service).delete(12, user);
 
         mockMvc.perform(delete("/reports/12"))
                 .andExpect(status().isConflict());
@@ -234,8 +236,8 @@ class ReportControllerTest {
 
     @Test
     void updateStatus_returnsUpdatedStatus() throws Exception {
-        when(service.updateStatus(12, ReportStatus.ARQUIVADO, 7)).thenReturn(
-                new ReportResponse(12, 7, response().generatedAt(), "hash-de-teste",
+        when(service.updateStatus(12, ReportStatus.ARQUIVADO, user)).thenReturn(
+                new ReportResponse(12, 7, 1, response().generatedAt(), "hash-de-teste",
                         response().periodStart(), response().periodEnd(), ReportStatus.ARQUIVADO,
                         "Relatório de teste"));
 
@@ -245,7 +247,7 @@ class ReportControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ARQUIVADO"));
 
-        verify(service).updateStatus(12, ReportStatus.ARQUIVADO, 7);
+        verify(service).updateStatus(12, ReportStatus.ARQUIVADO, user);
     }
 
     @Test
@@ -260,7 +262,7 @@ class ReportControllerTest {
 
     @Test
     void updateStatus_returnsConflictWhenTransitionIsNotAllowed() throws Exception {
-        when(service.updateStatus(12, ReportStatus.GERADO, 7))
+        when(service.updateStatus(12, ReportStatus.GERADO, user))
                 .thenThrow(new ReportRuleViolationException("Transição não permitida"));
 
         mockMvc.perform(patch("/reports/12/status")
@@ -274,13 +276,14 @@ class ReportControllerTest {
                 {
                   "content": "Relatório de teste",
                   "periodStart": "2026-09-01",
-                  "periodEnd": "2026-09-30"
+                  "periodEnd": "2026-09-30",
+                  "distributionCenterId": 1
                 }
                 """;
     }
 
     private ReportResponse response() {
-        return new ReportResponse(12, 7,
+        return new ReportResponse(12, 7, 1,
                 LocalDateTime.of(2026, 10, 10, 12, 0), "hash-de-teste",
                 LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 30),
                 ReportStatus.GERADO, "Relatório de teste");
