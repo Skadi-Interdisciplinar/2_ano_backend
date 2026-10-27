@@ -66,8 +66,8 @@ class DistributionCenterAccessServiceTest {
 
     private User user(Long id, NivelAcesso level, Long distributionCenterId) {
         DistributionCenter distributionCenter = distributionCenterId == null ? null
-                : new DistributionCenter(distributionCenterId, "CD", "12345678901234");
+                : new DistributionCenter(distributionCenterId, "CD", "12345678901234", null);
         return new User(id, "Usuário", "usuario" + id, "12345678901",
-                "usuario" + id + "@teste.com", "senha", level, distributionCenter, null);
+                "usuario" + id + "@teste.com", "senha", level, distributionCenter, null, null);
     }
 }

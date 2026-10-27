@@ -23,9 +23,9 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByUsername(String username);
 
-    boolean existsByNivelAcessoAndCd_Id(NivelAcesso nivelAcesso, Long distributionCenterId);
+    boolean existsByNivelAcessoAndCdGestor_Id(NivelAcesso nivelAcesso, Long distributionCenterId);
 
-    boolean existsByIdAndNivelAcessoAndCd_Id(Long id, NivelAcesso nivelAcesso, Long distributionCenterId);
+    boolean existsByIdAndNivelAcessoAndCdGestor_Id(Long id, NivelAcesso nivelAcesso, Long distributionCenterId);
 
 
 

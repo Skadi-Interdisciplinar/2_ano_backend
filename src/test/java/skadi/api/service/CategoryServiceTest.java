@@ -140,6 +140,6 @@ class CategoryServiceTest {
 
     private User admin() {
         return new User(30L, "Admin", "admin", "12345678901", "admin@skadi.com",
-                "senha", NivelAcesso.ADMIN, null, null);
+                "senha", NivelAcesso.ADMIN, null, null, null);
     }
 }
