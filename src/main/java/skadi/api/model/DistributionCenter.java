@@ -2,15 +2,13 @@ package skadi.api.model;
 
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.validator.constraints.Length;
 
-import javax.management.MXBean;
+import java.util.List;
 
 @Entity
 @Table(name = "tb_cd")
@@ -31,6 +29,14 @@ public class DistributionCenter {
     @Size(min = 14,max = 14, message = "CNPJ precisa de 14 carcteres")
     @Column(unique = true)
     private String cnpj;
+
+
+    @ManyToMany
+    @JoinTable(name = "tb_admin_cd",
+            joinColumns = @JoinColumn(name = "cod_admin"),
+            inverseJoinColumns = @JoinColumn(name = "cod_cd")
+    )
+    public List<User> admins;
 
     public DistributionCenter(String name, String cnpj) {
         this.name = name;

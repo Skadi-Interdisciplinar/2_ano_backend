@@ -184,11 +184,11 @@ class AddressServiceTest {
     }
 
     private DistributionCenter distributionCenter() {
-        return new DistributionCenter(1L, "CD São Paulo", "48372615000194");
+        return new DistributionCenter(1L, "CD São Paulo", "48372615000194", null);
     }
 
     private User admin() {
         return new User(20L, "Admin", "admin", "12345678901", "admin@skadi.com",
-                "senha", NivelAcesso.ADMIN, null, null);
+                "senha", NivelAcesso.ADMIN, null, null, null);
     }
 }

@@ -250,13 +250,13 @@ class BatchServiceTest {
     private ColdRoom coldRoom() {
         return new ColdRoom(3L, "Câmara", "Corredor A",
                 new BigDecimal("-20.00"), new BigDecimal("-10.00"),
-                new DistributionCenter(5L, "CD", "12345678000199"),
+                new DistributionCenter(5L, "CD", "12345678000199", null),
                 new Thermometer(7L, "DHT22"));
     }
 
     private User operator() {
         return new User(50L, "Operador", "operador", "12345678901", "op@skadi.com",
                 "senha", NivelAcesso.OPERADOR,
-                new DistributionCenter(5L, "CD", "12345678000199"), 60);
+                new DistributionCenter(5L, "CD", "12345678000199", null), null, 60);
     }
 }

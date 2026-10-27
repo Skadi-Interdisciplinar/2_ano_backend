@@ -280,7 +280,7 @@ class BatchStorageServiceTest {
                 "Corredor A",
                 new BigDecimal("-20.00"),
                 new BigDecimal("-10.00"),
-                new DistributionCenter(distributionCenterId, "Centro Principal", "12345678000199"),
+                new DistributionCenter(distributionCenterId, "Centro Principal", "12345678000199", null),
                 new Thermometer(id + 10, "DHT22")
         );
     }
@@ -288,6 +288,6 @@ class BatchStorageServiceTest {
     private User operator() {
         return new User(70L, "Operador", "operador", "12345678901", "op@skadi.com",
                 "senha", NivelAcesso.OPERADOR,
-                new DistributionCenter(5L, "Centro Principal", "12345678000199"), 80);
+                new DistributionCenter(5L, "Centro Principal", "12345678000199", null), null, 80);
     }
 }

@@ -25,7 +25,7 @@ class DistributionCenterMapperTest {
 
     @Test
     void toDTO_copiesEntityFields() {
-        DistributionCenter cd = new DistributionCenter(1L, "CD Osasco", "12345678901234");
+        DistributionCenter cd = new DistributionCenter(1L, "CD Osasco", "12345678901234", null);
 
         DistributionCenterResponse response = DistributionCenterMapper.toDTO(cd);
 
@@ -37,7 +37,7 @@ class DistributionCenterMapperTest {
     @Test
     void toDTOList_mapsAllCenters() {
         List<DistributionCenterResponse> responses = DistributionCenterMapper.toDTOList(List.of(
-                new DistributionCenter(1L, "CD Osasco", "12345678901234")
+                new DistributionCenter(1L, "CD Osasco", "12345678901234", null)
         ));
 
         assertEquals(1, responses.size());

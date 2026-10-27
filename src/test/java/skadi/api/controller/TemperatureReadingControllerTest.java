@@ -49,7 +49,7 @@ class TemperatureReadingControllerTest {
     void setUp() {
         user = new User(7L, "Test User", "testuser", "12345678901",
                 "test@example.com", "password", NivelAcesso.ADMIN,
-                new DistributionCenter(1L, "CD de teste", "12345678901234"), null);
+                new DistributionCenter(1L, "CD de teste", "12345678901234", null), null, null);
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new TemperatureReadingController(service))
                 .setControllerAdvice(new GlobalExceptionHandler())
