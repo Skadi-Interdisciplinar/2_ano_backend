@@ -39,4 +39,6 @@ public class UserController {
     public ResponseEntity<User> me(@AuthenticationPrincipal User user){
         return ResponseEntity.ok(user);
     }
+
+
 }
