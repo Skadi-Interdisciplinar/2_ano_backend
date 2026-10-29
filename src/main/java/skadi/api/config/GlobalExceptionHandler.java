@@ -44,6 +44,8 @@ import skadi.api.exceptions.ColdRoomInvalidTemperatureRangeException;
 import skadi.api.exceptions.ColdRoomRuleViolationException;
 import skadi.api.exceptions.AccessLevelChangeNotAllowedException;
 import skadi.api.exceptions.NotificationNotFoundException;
+import skadi.api.exceptions.SupportRequestNotFoundException;
+import skadi.api.exceptions.SupportRequestRuleViolationException;
 import skadi.api.exceptions.UserNotFoundException;
 
 import java.sql.Timestamp;
@@ -67,7 +69,8 @@ public class GlobalExceptionHandler {
         StateNotFoundException.class,
         ThermometerNotFoundException.class,
         NotificationNotFoundException.class,
-        UserNotFoundException.class})
+        UserNotFoundException.class,
+        SupportRequestNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleResourcesNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage(), Timestamp.from(Instant.now())));
@@ -106,6 +109,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessLevelChangeNotAllowedException.class)
     public ResponseEntity<ErrorResponse> handleAccessLevelChange(AccessLevelChangeNotAllowedException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), Timestamp.from(Instant.now())));
+    }
+
+    @ExceptionHandler(SupportRequestRuleViolationException.class)
+    public ResponseEntity<ErrorResponse> handleSupportRequestRule(SupportRequestRuleViolationException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), Timestamp.from(Instant.now())));
     }

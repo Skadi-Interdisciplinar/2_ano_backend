@@ -11,13 +11,20 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import skadi.api.config.GlobalExceptionHandler;
 import skadi.api.dto.DistributionCenterResponse;
+import skadi.api.dto.SupportRequestResponse;
+import skadi.api.dto.SupportRequestUpdateRequest;
 import skadi.api.dto.UserRequest;
 import skadi.api.dto.UserResponse;
 import skadi.api.enums.NivelAcesso;
+import skadi.api.enums.SupportCategory;
+import skadi.api.enums.SupportStatus;
 import skadi.api.exceptions.AccessLevelChangeNotAllowedException;
+import skadi.api.exceptions.SupportRequestNotFoundException;
 import skadi.api.exceptions.UserNotFoundException;
 import skadi.api.service.SuperAdminService;
+import skadi.api.service.SupportRequestService;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,6 +35,8 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -38,12 +47,15 @@ class SuperAdminControllerTest {
     @Mock
     private SuperAdminService service;
 
+    @Mock
+    private SupportRequestService supportRequestService;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new SuperAdminController(service))
+                .standaloneSetup(new SuperAdminController(service, supportRequestService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
@@ -114,6 +126,146 @@ class SuperAdminControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.statusCode").value(404))
                 .andExpect(jsonPath("$.message").value("Usuário não encontrado"));
+    }
+
+    @Test
+    void findAllSupportRequestsReturnsTickets() throws Exception {
+        when(supportRequestService.findAll()).thenReturn(List.of(ticket()));
+
+        mockMvc.perform(get("/super_admin/support"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(1))
+                .andExpect(jsonPath("$[0].status").value("REGISTRADO"))
+                .andExpect(jsonPath("$[0].categoria").value("DUVIDA"));
+    }
+
+    @Test
+    void findSupportRequestByIdReturnsTicket() throws Exception {
+        when(supportRequestService.findById(1L)).thenReturn(ticket());
+
+        mockMvc.perform(get("/super_admin/support/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.codUsuarioSolicitante").value(4))
+                .andExpect(jsonPath("$.status").value("REGISTRADO"))
+                .andExpect(jsonPath("$.categoria").value("DUVIDA"));
+    }
+
+    @Test
+    void findSupportRequestByIdReturns404WhenTicketDoesNotExist() throws Exception {
+        when(supportRequestService.findById(99L)).thenThrow(new SupportRequestNotFoundException());
+
+        mockMvc.perform(get("/super_admin/support/99"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.statusCode").value(404))
+                .andExpect(jsonPath("$.message").value("Chamado não encontrado"));
+    }
+
+    @Test
+    void updateSupportRequestReturnsUpdatedTicket() throws Exception {
+        when(supportRequestService.update(eq(1L), any(SupportRequestUpdateRequest.class), any()))
+                .thenReturn(ticket());
+
+        mockMvc.perform(put("/super_admin/support/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "categoria": "RECLAMACAO",
+                                  "descricao": "O relatório continua indisponível.",
+                                  "resposta": "Estamos verificando."
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.descricao").value("Não consigo abrir o relatório."));
+
+        ArgumentCaptor<SupportRequestUpdateRequest> captor = ArgumentCaptor.forClass(SupportRequestUpdateRequest.class);
+        verify(supportRequestService).update(eq(1L), captor.capture(), any());
+        assertEquals(SupportCategory.RECLAMACAO, captor.getValue().categoria());
+        assertEquals("Estamos verificando.", captor.getValue().resposta());
+    }
+
+    @Test
+    void updateSupportRequestReturns404WhenTicketDoesNotExist() throws Exception {
+        when(supportRequestService.update(eq(99L), any(SupportRequestUpdateRequest.class), any()))
+                .thenThrow(new SupportRequestNotFoundException());
+
+        mockMvc.perform(put("/super_admin/support/99")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "categoria": "RECLAMACAO",
+                                  "descricao": "O relatório continua indisponível.",
+                                  "resposta": "Estamos verificando."
+                                }
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.statusCode").value(404))
+                .andExpect(jsonPath("$.message").value("Chamado não encontrado"));
+    }
+
+    @Test
+    void updateSupportRequestStatusForwardsOnlyStatus() throws Exception {
+        when(supportRequestService.updateStatus(eq(1L), eq(SupportStatus.ATENDIDO), any())).thenReturn(ticket());
+
+        mockMvc.perform(patch("/super_admin/support/1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "status": "ATENDIDO" }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REGISTRADO"));
+
+        verify(supportRequestService).updateStatus(eq(1L), eq(SupportStatus.ATENDIDO), any());
+    }
+
+    @Test
+    void updateSupportRequestStatusReturns404WhenTicketDoesNotExist() throws Exception {
+        when(supportRequestService.updateStatus(eq(99L), any(SupportStatus.class), any()))
+                .thenThrow(new SupportRequestNotFoundException());
+
+        mockMvc.perform(patch("/super_admin/support/99/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "status": "ATENDIDO" }
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.statusCode").value(404))
+                .andExpect(jsonPath("$.message").value("Chamado não encontrado"));
+    }
+
+    @Test
+    void deleteSupportRequestReturns204() throws Exception {
+        doNothing().when(supportRequestService).delete(1L);
+
+        mockMvc.perform(delete("/super_admin/support/1"))
+                .andExpect(status().isNoContent());
+
+        verify(supportRequestService).delete(1L);
+    }
+
+    @Test
+    void deleteSupportRequestReturns404WhenTicketDoesNotExist() throws Exception {
+        doThrow(new SupportRequestNotFoundException()).when(supportRequestService).delete(99L);
+
+        mockMvc.perform(delete("/super_admin/support/99"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.statusCode").value(404))
+                .andExpect(jsonPath("$.message").value("Chamado não encontrado"));
+    }
+
+    private SupportRequestResponse ticket() {
+        return new SupportRequestResponse(
+                1L,
+                4L,
+                SupportCategory.DUVIDA,
+                "Não consigo abrir o relatório.",
+                SupportStatus.REGISTRADO,
+                LocalDateTime.of(2026, 10, 29, 8, 25),
+                null,
+                null,
+                null
+        );
     }
 
     private UserResponse response() {
