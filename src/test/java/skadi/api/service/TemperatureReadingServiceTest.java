@@ -14,6 +14,7 @@ import org.springframework.data.redis.core.StreamOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import skadi.api.repository.TemperatureReadingRepository;
 import skadi.api.repository.ColdRoomRepository;
+import skadi.api.repository.ThermometerRepository;
 import org.springframework.test.util.ReflectionTestUtils;
 import skadi.api.dto.TemperatureReadingRequest;
 import skadi.api.dto.TemperatureReadingResponse;
@@ -21,6 +22,10 @@ import skadi.api.dto.TemperatureReadingView;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.exceptions.ColdRoomNotFoundException;
 import skadi.api.exceptions.TemperatureReadingNotFoundException;
+import skadi.api.exceptions.ResourceOutsideScopeException;
+import skadi.api.exceptions.ThermometerNotFoundException;
+import skadi.api.model.User;
+import skadi.api.model.DistributionCenter;
 
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -37,6 +42,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.doThrow;
 
 @ExtendWith(MockitoExtension.class)
 class TemperatureReadingServiceTest {
@@ -59,12 +66,16 @@ class TemperatureReadingServiceTest {
     @Mock
     private DistributionCenterAccessService accessService;
 
+    @Mock
+    private ThermometerRepository thermometerRepository;
+
     private TemperatureReadingService service;
 
     @BeforeEach
     void setUp() {
         service = new TemperatureReadingService(
-                redisTemplate, repository, coldRoomRepository, accessService);
+                redisTemplate, repository, coldRoomRepository, accessService, thermometerRepository);
+        lenient().when(thermometerRepository.findDistributionCenterId(7L)).thenReturn(Optional.of(1L));
         ReflectionTestUtils.setField(service, "temperatureStream", "skadi:leituras:temperatura");
         ReflectionTestUtils.setField(service, "temperatureRetentionHours", 72L);
     }
@@ -81,7 +92,7 @@ class TemperatureReadingServiceTest {
                 OffsetDateTime.parse("2026-10-03T18:00:00-03:00")
         );
 
-        TemperatureReadingResponse response = service.publish(request);
+        TemperatureReadingResponse response = service.publish(request, adminUser());
 
         ArgumentCaptor<MapRecord> captor = ArgumentCaptor.forClass(MapRecord.class);
         verify(streamOperations).add(captor.capture());
@@ -110,8 +121,8 @@ class TemperatureReadingServiceTest {
                 OffsetDateTime.parse("2026-10-03T18:00:00-03:00")
         );
 
-        TemperatureReadingResponse first = service.publish(request);
-        TemperatureReadingResponse second = service.publish(request);
+        TemperatureReadingResponse first = service.publish(request, adminUser());
+        TemperatureReadingResponse second = service.publish(request, adminUser());
 
         assertEquals(first.eventId(), second.eventId());
     }
@@ -122,7 +133,7 @@ class TemperatureReadingServiceTest {
         when(streamOperations.add(any(MapRecord.class)))
                 .thenReturn(RecordId.of("1740000000000-0"));
 
-        service.publish(request());
+        service.publish(request(), adminUser());
 
         verify(streamOperations).trim(eq("skadi:leituras:temperatura"), any(RedisStreamCommands.XTrimOptions.class));
     }
@@ -133,10 +144,31 @@ class TemperatureReadingServiceTest {
         when(streamOperations.add(any(MapRecord.class)))
                 .thenThrow(new IllegalStateException("Redis indisponível"));
 
-        assertThrows(IllegalStateException.class, () -> service.publish(request()));
+        assertThrows(IllegalStateException.class, () -> service.publish(request(), adminUser()));
 
         verify(streamOperations, never())
                 .trim(any(String.class), any(RedisStreamCommands.XTrimOptions.class));
+    }
+
+    @Test
+    void publishRejectsThermometerOutsideAdminsDistributionCenters() {
+        doThrow(new ResourceOutsideScopeException())
+                .when(accessService).requireAdminOwnership(adminUser(), 1L);
+
+        assertThrows(ResourceOutsideScopeException.class,
+                () -> service.publish(request(), adminUser()));
+
+        org.mockito.Mockito.verifyNoInteractions(redisTemplate);
+    }
+
+    @Test
+    void publishRejectsThermometerThatIsNotAssignedToAColdRoom() {
+        when(thermometerRepository.findDistributionCenterId(7L)).thenReturn(Optional.empty());
+
+        assertThrows(ThermometerNotFoundException.class,
+                () -> service.publish(request(), adminUser()));
+
+        org.mockito.Mockito.verifyNoInteractions(redisTemplate);
     }
 
     @Test
@@ -285,6 +317,13 @@ class TemperatureReadingServiceTest {
                 new BigDecimal("-12.50"),
                 OffsetDateTime.parse("2026-10-03T18:00:00-03:00")
         );
+    }
+
+    private User adminUser() {
+        User user = new User();
+        user.setId(9L);
+        user.setNivelAcesso(NivelAcesso.ADMIN);
+        return user;
     }
 
     private void givenRedisStreamOperations() {

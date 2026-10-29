@@ -44,6 +44,7 @@ import skadi.api.exceptions.ColdRoomInvalidTemperatureRangeException;
 import skadi.api.exceptions.ColdRoomRuleViolationException;
 import skadi.api.exceptions.AccessLevelChangeNotAllowedException;
 import skadi.api.exceptions.NotificationNotFoundException;
+import skadi.api.exceptions.ResourceOutsideScopeException;
 import skadi.api.exceptions.UserNotFoundException;
 
 import java.sql.Timestamp;
@@ -67,6 +68,7 @@ public class GlobalExceptionHandler {
         StateNotFoundException.class,
         ThermometerNotFoundException.class,
         NotificationNotFoundException.class,
+        ResourceOutsideScopeException.class})
         UserNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleResourcesNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)

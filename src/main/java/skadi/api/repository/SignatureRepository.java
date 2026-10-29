@@ -7,42 +7,37 @@ import skadi.api.model.Signature;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Collection;
 
 public interface SignatureRepository extends JpaRepository<Signature, Integer> {
 
     @Query(value = """
-            SELECT s.*
-            FROM tb_assinatura s
+            SELECT s.* FROM tb_assinatura s
             JOIN tb_relatorio r ON r.id = s.cod_relatorio
-            JOIN tb_usuario u ON u.id = r.cod_usuario_gerador
-            WHERE u.cod_cd = :cdId
+            WHERE r.cod_cd IN (:cdIds)
             ORDER BY s.id DESC
             """, nativeQuery = true)
-    List<Signature> findAllByReportAuthorCdOrderByIdDesc(@Param("cdId") Integer cdId);
+    List<Signature> findAllByReportCdIn(@Param("cdIds") Collection<Integer> cdIds);
 
     @Query(value = """
-            SELECT s.*
-            FROM tb_assinatura s
+            SELECT s.* FROM tb_assinatura s
             JOIN tb_relatorio r ON r.id = s.cod_relatorio
-            JOIN tb_usuario u ON u.id = r.cod_usuario_gerador
-            WHERE s.cod_relatorio = :reportId AND u.cod_cd = :cdId
+            WHERE r.id = :reportId AND r.cod_cd IN (:cdIds)
             """, nativeQuery = true)
-    Optional<Signature> findByReportIdAndAuthorCd(
-            @Param("reportId") Integer reportId,
-            @Param("cdId") Integer cdId
-    );
+    Optional<Signature> findByReportIdAndReportCdIn(
+            @Param("reportId") Integer reportId, @Param("cdIds") Collection<Integer> cdIds);
 
     @Query(value = """
-            SELECT s.*
-            FROM tb_assinatura s
+            SELECT s.* FROM tb_assinatura s
             JOIN tb_relatorio r ON r.id = s.cod_relatorio
-            JOIN tb_usuario u ON u.id = r.cod_usuario_gerador
-            WHERE s.id = :signatureId AND u.cod_cd = :cdId
+            WHERE s.id = :signatureId AND r.cod_cd IN (:cdIds)
             """, nativeQuery = true)
-    Optional<Signature> findByIdAndReportAuthorCd(
-            @Param("signatureId") Integer signatureId,
-            @Param("cdId") Integer cdId
-    );
+    Optional<Signature> findByIdAndReportCdIn(
+            @Param("signatureId") Integer signatureId, @Param("cdIds") Collection<Integer> cdIds);
 
     boolean existsByReportId(Integer reportId);
+
+    Optional<Signature> findByReportId(Integer reportId);
+
+    List<Signature> findAllByOrderByIdDesc();
 }

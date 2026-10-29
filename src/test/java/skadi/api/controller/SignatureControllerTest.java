@@ -83,7 +83,7 @@ class SignatureControllerTest {
 
     @Test
     void create_returnsCreatedSignature() throws Exception {
-        when(service.create(eq(4), any(SignatureRequest.class), eq(7)))
+        when(service.create(eq(4), any(SignatureRequest.class), eq(user)))
                 .thenReturn(response());
 
         mockMvc.perform(post("/reports/4/signature")
@@ -95,7 +95,7 @@ class SignatureControllerTest {
                 .andExpect(jsonPath("$.certificateHolder").value("Assinante de teste"))
                 .andExpect(jsonPath("$.signature").value("assinatura-demonstrativa"));
 
-        verify(service).create(eq(4), any(SignatureRequest.class), eq(7));
+        verify(service).create(eq(4), any(SignatureRequest.class), eq(user));
     }
 
     @Test
@@ -140,7 +140,7 @@ class SignatureControllerTest {
 
     @Test
     void create_returnsConflictWhenReportCannotBeSigned() throws Exception {
-        when(service.create(eq(4), any(SignatureRequest.class), eq(7)))
+        when(service.create(eq(4), any(SignatureRequest.class), eq(user)))
                 .thenThrow(new ReportRuleViolationException("Relatório já assinado"));
 
         mockMvc.perform(post("/reports/4/signature")
@@ -151,7 +151,7 @@ class SignatureControllerTest {
 
     @Test
     void create_returnsConflictWhenReportAlreadyHasSignature() throws Exception {
-        when(service.create(eq(4), any(SignatureRequest.class), eq(7)))
+        when(service.create(eq(4), any(SignatureRequest.class), eq(user)))
                 .thenThrow(new SignatureAlreadyExistsException(4));
 
         mockMvc.perform(post("/reports/4/signature")
@@ -163,19 +163,19 @@ class SignatureControllerTest {
 
     @Test
     void findByReportId_returnsSignatures() throws Exception {
-        when(service.findByReportId(4, 1, NivelAcesso.GESTOR)).thenReturn(Optional.of(response()));
+        when(service.findByReportId(4, user)).thenReturn(Optional.of(response()));
 
         mockMvc.perform(get("/reports/4/signature"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(12))
                 .andExpect(jsonPath("$.reportId").value(4));
 
-        verify(service).findByReportId(4, 1, NivelAcesso.GESTOR);
+        verify(service).findByReportId(4, user);
     }
 
     @Test
     void findByReportId_returnsNotFoundWhenNoneExists() throws Exception {
-        when(service.findByReportId(4, 1, NivelAcesso.GESTOR)).thenReturn(Optional.empty());
+        when(service.findByReportId(4, user)).thenReturn(Optional.empty());
 
         mockMvc.perform(get("/reports/4/signature"))
                 .andExpect(status().isNotFound());
@@ -183,19 +183,19 @@ class SignatureControllerTest {
 
     @Test
     void findAll_returnsSignaturesForAuthenticatedUsersCd() throws Exception {
-        when(service.findAllByCd(1, NivelAcesso.GESTOR)).thenReturn(List.of(response()));
+        when(service.findAllByCd(user)).thenReturn(List.of(response()));
 
         mockMvc.perform(get("/signatures"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(12))
                 .andExpect(jsonPath("$[0].reportId").value(4));
 
-        verify(service).findAllByCd(1, NivelAcesso.GESTOR);
+        verify(service).findAllByCd(user);
     }
 
     @Test
     void findAll_returnsEmptyListWhenUserHasNoSignatures() throws Exception {
-        when(service.findAllByCd(1, NivelAcesso.GESTOR)).thenReturn(List.of());
+        when(service.findAllByCd(user)).thenReturn(List.of());
 
         mockMvc.perform(get("/signatures"))
                 .andExpect(status().isOk())
@@ -204,7 +204,7 @@ class SignatureControllerTest {
 
     @Test
     void findById_returnsSignature() throws Exception {
-        when(service.findById(12, 1, NivelAcesso.GESTOR)).thenReturn(response());
+        when(service.findById(12, user)).thenReturn(response());
 
         mockMvc.perform(get("/signatures/12"))
                 .andExpect(status().isOk())
@@ -214,7 +214,7 @@ class SignatureControllerTest {
 
     @Test
     void findById_returnsNotFoundWhenSignatureDoesNotExist() throws Exception {
-        when(service.findById(99, 1, NivelAcesso.GESTOR)).thenThrow(new SignatureNotFoundException(99));
+        when(service.findById(99, user)).thenThrow(new SignatureNotFoundException(99));
 
         mockMvc.perform(get("/signatures/99"))
                 .andExpect(status().isNotFound());
