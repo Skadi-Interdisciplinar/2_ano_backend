@@ -14,6 +14,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Atendimentos de alertas")
 public class AlertHandlingController {
     private final AlertHandlingService service;
 

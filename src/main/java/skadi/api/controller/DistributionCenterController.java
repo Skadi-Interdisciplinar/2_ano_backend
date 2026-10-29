@@ -23,6 +23,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/cd")
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Centros de distribuição")
 public class DistributionCenterController {
     private final DistributionCenterService service;
 

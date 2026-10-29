@@ -63,7 +63,7 @@ public class AlertService {
         accessService.requireOperationalWrite(user, distributionCenterId(alertId));
 
         Integer userId = Math.toIntExact(user.getId());
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
 
         entityManager.createNativeQuery("CALL sp_reconhecer_alerta(:alertId, :userId)")
                 .setParameter("alertId", alertId)

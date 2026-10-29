@@ -40,7 +40,7 @@ public class AddressService {
 
         DistributionCenter distributionCenter = findDistributionCenter(distributionCenterId);
         State state = findState(request.stateId());
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         Address address = AddressMapper.fromRequest(request, state, distributionCenter);
         return AddressMapper.toResponse(addressRepository.save(address));
     }
@@ -71,7 +71,7 @@ public class AddressService {
             throw new AddressAlreadyExistsException();
         }
 
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         State state = findState(request.stateId());
         AddressMapper.update(address, request, state);
         return AddressMapper.toResponse(addressRepository.save(address));
@@ -81,7 +81,7 @@ public class AddressService {
     public void delete(Long id, User user) {
         Address address = findAddress(id);
         accessService.requireAdminOwnership(user, address.getDistributionCenter().getId());
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         addressRepository.delete(address);
         addressRepository.flush();
     }

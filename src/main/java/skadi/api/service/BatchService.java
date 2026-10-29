@@ -55,7 +55,7 @@ public class BatchService {
                 .orElseThrow(() -> new skadi.api.exceptions.ColdRoomNotFoundException(request.coldRoomId()));
         accessService.requireOperationalWrite(user, coldRoom.getDistributionCenter().getId());
 
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         Batch batch = BatchMapper.fromRequest(request, category);
         batch = batchRepository.save(batch);
         try {
@@ -113,7 +113,7 @@ public class BatchService {
             );
         }
 
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         Category category = findCategory(request.categoryId());
         BatchMapper.update(batch, request, category);
         return BatchMapper.toResponse(batchRepository.save(batch));
@@ -123,7 +123,7 @@ public class BatchService {
     public BatchResponse updateStatus(Long id, BatchStatus status, User user) {
         Batch batch = findEntityById(id);
         accessService.requireOperationalWrite(user, findDistributionCenterId(id));
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         batch.setStatus(status);
         return BatchMapper.toResponse(batchRepository.save(batch));
     }
@@ -138,7 +138,7 @@ public class BatchService {
             );
         }
 
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         batchRepository.delete(batch);
         batchRepository.flush();
     }

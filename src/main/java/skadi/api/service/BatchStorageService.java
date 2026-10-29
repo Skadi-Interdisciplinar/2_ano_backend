@@ -45,7 +45,7 @@ public class BatchStorageService {
                 .ifPresent(firstStorage -> ensureSameDistributionCenter(
                         firstStorage.getColdRoom(), coldRoom));
 
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         BatchStorage storage = new BatchStorage(
                 null,
                 batch,
@@ -92,7 +92,7 @@ public class BatchStorageService {
         accessService.requireOperationalWrite(
                 user, currentStorage.getColdRoom().getDistributionCenter().getId());
         ensureSameDistributionCenter(currentStorage.getColdRoom(), destination);
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         LocalDateTime movementDate = exitDateFor(currentStorage);
         currentStorage.setExitDate(movementDate);
         saveAndFlush(currentStorage);
@@ -115,7 +115,7 @@ public class BatchStorageService {
         accessService.requireOperationalWrite(
                 user, storage.getColdRoom().getDistributionCenter().getId());
 
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         storage.setExitDate(exitDateFor(storage));
         return BatchStorageMapper.toResponse(saveAndFlush(storage));
     }

@@ -35,7 +35,7 @@ public class CategoryService {
             throw new CategoryAlreadyExistsException("Já existe uma categoria com esse nome");
         }
 
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         Category category = CategoryMapper.fromRequest(request);
         return CategoryMapper.toResponse(repository.save(category));
     }
@@ -64,7 +64,7 @@ public class CategoryService {
             throw new CategoryAlreadyExistsException("Já existe outra categoria com esse nome");
         }
 
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         CategoryMapper.update(category, request);
         return CategoryMapper.toResponse(repository.save(category));
     }
@@ -74,7 +74,7 @@ public class CategoryService {
         accessService.requireRole(user, NivelAcesso.ADMIN,
                 "Somente ADMIN pode excluir categorias.");
         Category category = findEntityById(id);
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         repository.delete(category);
         repository.flush();
     }

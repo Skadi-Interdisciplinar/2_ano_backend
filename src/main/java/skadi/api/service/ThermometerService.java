@@ -28,7 +28,7 @@ public class ThermometerService {
     public ThermometerResponse create(ThermometerRequest request, User user) {
         accessService.requireRole(user, NivelAcesso.ADMIN,
                 "Somente ADMIN pode cadastrar termômetros.");
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         Thermometer thermometer = ThermometerMapper.fromRequest(request);
         return ThermometerMapper.toResponse(repository.save(thermometer));
     }
@@ -57,7 +57,7 @@ public class ThermometerService {
     public ThermometerResponse update(Long id, ThermometerRequest request, User user) {
         Thermometer thermometer = findEntityById(id);
         requireAdminAccess(user, id);
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         ThermometerMapper.update(thermometer, request);
         return ThermometerMapper.toResponse(repository.save(thermometer));
     }
@@ -76,7 +76,7 @@ public class ThermometerService {
                     "O termômetro não pode ser excluído porque possui leituras de temperatura");
         }
 
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         repository.delete(thermometer);
         repository.flush();
     }
