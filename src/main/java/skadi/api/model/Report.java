@@ -32,6 +32,9 @@ public class Report {
     @Column(name = "cod_usuario_gerador", nullable = false)
     private Integer generatedByUserId;
 
+    @Column(name = "cod_cd", nullable = false)
+    private Integer distributionCenterId;
+
     @Column(name = "data_hora_geracao", nullable = false)
     private LocalDateTime generatedAt;
 

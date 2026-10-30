@@ -7,6 +7,7 @@ import skadi.api.enums.ReportStatus;
 public record ReportResponse(
         Integer id,
         Integer generatedByUserId,
+        Integer distributionCenterId,
         LocalDateTime generatedAt,
         String contentHash,
         LocalDate periodStart,

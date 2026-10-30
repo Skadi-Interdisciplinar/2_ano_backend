@@ -48,7 +48,7 @@ class TemperatureReadingControllerTest {
     @BeforeEach
     void setUp() {
         user = new User(7L, "Test User", "testuser", "12345678901",
-                "test@example.com", "password", NivelAcesso.OPERADOR,
+                "test@example.com", "password", NivelAcesso.ADMIN,
                 new DistributionCenter(1L, "CD de teste", "12345678901234", null), null, null);
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new TemperatureReadingController(service))
@@ -72,7 +72,7 @@ class TemperatureReadingControllerTest {
 
     @Test
     void publish_returns202WhenReadingIsAccepted() throws Exception {
-        when(service.publish(any())).thenReturn(new TemperatureReadingResponse(
+        when(service.publish(any(), any(User.class))).thenReturn(new TemperatureReadingResponse(
                 "evt-123",
                 "1740000000000-0",
                 "received",

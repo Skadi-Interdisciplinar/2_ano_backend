@@ -47,6 +47,7 @@ import skadi.api.exceptions.AccessLevelChangeNotAllowedException;
 import skadi.api.exceptions.NotificationNotFoundException;
 import skadi.api.exceptions.SupportRequestNotFoundException;
 import skadi.api.exceptions.SupportRequestRuleViolationException;
+import skadi.api.exceptions.ResourceOutsideScopeException;
 import skadi.api.exceptions.UserNotFoundException;
 
 import java.sql.Timestamp;
