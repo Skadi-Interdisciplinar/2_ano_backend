@@ -12,18 +12,25 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import skadi.api.config.GlobalExceptionHandler;
+import skadi.api.dto.SupportRequestResponse;
 import skadi.api.dto.TokenResponse;
+import skadi.api.enums.SupportCategory;
+import skadi.api.enums.SupportStatus;
+import skadi.api.exceptions.SupportRequestRuleViolationException;
 import skadi.api.exceptions.UserAlreadyExistsException;
+import skadi.api.service.SupportRequestService;
 import skadi.api.service.UserService;
 
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDateTime;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -33,6 +40,9 @@ class UserControllerTest {
     @Mock
     private UserService userService;
 
+    @Mock
+    private SupportRequestService supportRequestService;
+
     private static final String SUPER_ADMIN_BEARER = "Bearer eyJhbGciOiJIUzI1NiJ9.admin-token";
 
     private MockMvc mockMvc;
@@ -40,7 +50,7 @@ class UserControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new UserController(userService))
+                .standaloneSetup(new UserController(userService, supportRequestService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
@@ -163,5 +173,56 @@ class UserControllerTest {
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.statusCode").value(500))
                 .andExpect(jsonPath("$.message").value("Erro inesperado: java.lang.IllegalStateException: falha"));
+    }
+
+    @Test
+    void createSupportRequestReturns201() throws Exception {
+        when(supportRequestService.create(any(), any())).thenReturn(new SupportRequestResponse(
+                1L,
+                4L,
+                SupportCategory.DUVIDA,
+                "Não consigo abrir o relatório.",
+                SupportStatus.REGISTRADO,
+                LocalDateTime.of(2026, 10, 29, 8, 25),
+                null,
+                null,
+                null
+        ));
+
+        mockMvc.perform(post("/support")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "categoria": "DUVIDA",
+                                  "descricao": "Não consigo abrir o relatório."
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "/support/1"))
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.codUsuarioSolicitante").value(4))
+                .andExpect(jsonPath("$.categoria").value("DUVIDA"))
+                .andExpect(jsonPath("$.status").value("REGISTRADO"))
+                .andExpect(jsonPath("$.dataHoraAbertura").value("2026-10-29T08:25:00"));
+    }
+
+    @Test
+    void createSupportRequestReturns400WhenStatusIsNotRegistrado() throws Exception {
+        when(supportRequestService.create(any(), any())).thenThrow(
+                new SupportRequestRuleViolationException(
+                        "O chamado deve ser aberto com o status REGISTRADO"));
+
+        mockMvc.perform(post("/support")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "categoria": "DUVIDA",
+                                  "descricao": "Não consigo abrir o relatório.",
+                                  "status": "EM_ATENDIMENTO"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.statusCode").value(400))
+                .andExpect(jsonPath("$.message").value("O chamado deve ser aberto com o status REGISTRADO"));
     }
 }

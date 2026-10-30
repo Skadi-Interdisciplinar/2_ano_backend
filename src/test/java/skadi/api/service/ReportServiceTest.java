@@ -407,7 +407,7 @@ class ReportServiceTest {
         user.setId(role == NivelAcesso.ADMIN ? AUTHOR_ID.longValue() : 9L);
         user.setNivelAcesso(role);
         if (role == NivelAcesso.GESTOR || role == NivelAcesso.OPERADOR) {
-            user.setCd(new DistributionCenter(CD_ID.longValue(), "CD de teste", "12345678901234"));
+            user.setCd(List.of(new DistributionCenter(CD_ID.longValue(), "CD de teste", "12345678901234", null)));
         }
         return user;
     }

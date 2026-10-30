@@ -11,7 +11,7 @@ import skadi.api.model.User;
 
 import java.util.List;
 
-public class UserMapper {
+public final class UserMapper {
     public static User fromDTO(RegisterRequest dto){
         if (dto.nivelAcesso() == NivelAcesso.ADMIN) {
             return new User(
