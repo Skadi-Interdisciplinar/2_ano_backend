@@ -16,8 +16,11 @@ import skadi.api.dto.SupportRequestResponse;
 import skadi.api.dto.TokenResponse;
 import skadi.api.enums.SupportCategory;
 import skadi.api.enums.SupportStatus;
+import skadi.api.exceptions.InvalidPasswordRecoveryCodeException;
 import skadi.api.exceptions.SupportRequestRuleViolationException;
 import skadi.api.exceptions.UserAlreadyExistsException;
+import skadi.api.exceptions.UserNotFoundException;
+import skadi.api.service.PasswordRecoveryService;
 import skadi.api.service.SupportRequestService;
 import skadi.api.service.UserService;
 
@@ -43,6 +46,9 @@ class UserControllerTest {
     @Mock
     private SupportRequestService supportRequestService;
 
+    @Mock
+    private PasswordRecoveryService passwordRecoveryService;
+
     private static final String SUPER_ADMIN_BEARER = "Bearer eyJhbGciOiJIUzI1NiJ9.admin-token";
 
     private MockMvc mockMvc;
@@ -50,7 +56,7 @@ class UserControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new UserController(userService, supportRequestService))
+                .standaloneSetup(new UserController(userService, supportRequestService, passwordRecoveryService))
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
     }
@@ -224,5 +230,67 @@ class UserControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.statusCode").value(400))
                 .andExpect(jsonPath("$.message").value("O chamado deve ser aberto com o status REGISTRADO"));
+    }
+
+    @Test
+    void recoverPasswordReturns204() throws Exception {
+        doNothing().when(passwordRecoveryService).recoverPassword("enzo@email.com");
+
+        mockMvc.perform(post("/auth/recover-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "email": "enzo@email.com" }
+                                """))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void recoverPasswordReturns404WhenEmailDoesNotExist() throws Exception {
+        doThrow(new UserNotFoundException("E-mail não encontrado"))
+                .when(passwordRecoveryService).recoverPassword("ausente@email.com");
+
+        mockMvc.perform(post("/auth/recover-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "email": "ausente@email.com" }
+                                """))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.statusCode").value(404))
+                .andExpect(jsonPath("$.message").value("E-mail não encontrado"));
+    }
+
+    @Test
+    void resetPasswordReturns204() throws Exception {
+        doNothing().when(passwordRecoveryService).resetPassword("enzo@email.com", "123456", "novaSenha");
+
+        mockMvc.perform(post("/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "enzo@email.com",
+                                  "codigo": "123456",
+                                  "senha": "novaSenha"
+                                }
+                                """))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void resetPasswordReturns400WhenCodeIsInvalid() throws Exception {
+        doThrow(new InvalidPasswordRecoveryCodeException())
+                .when(passwordRecoveryService).resetPassword("enzo@email.com", "000000", "novaSenha");
+
+        mockMvc.perform(post("/auth/reset-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "enzo@email.com",
+                                  "codigo": "000000",
+                                  "senha": "novaSenha"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.statusCode").value(400))
+                .andExpect(jsonPath("$.message").value("Código de recuperação inválido ou expirado"));
     }
 }
