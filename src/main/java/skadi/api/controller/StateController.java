@@ -14,6 +14,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/states")
 @RequiredArgsConstructor
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Estados")
 public class StateController {
 
     private final StateService service;

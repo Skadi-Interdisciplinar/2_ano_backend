@@ -23,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/categories")
 @RequiredArgsConstructor
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Categorias")
 public class CategoryController {
 
     private final CategoryService service;

@@ -25,6 +25,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/batches")
 @RequiredArgsConstructor
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Lotes")
 public class BatchController {
 
     private final BatchService service;
