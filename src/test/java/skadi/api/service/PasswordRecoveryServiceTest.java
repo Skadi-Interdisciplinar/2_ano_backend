@@ -138,6 +138,19 @@ class PasswordRecoveryServiceTest {
                 () -> service.resetPassword(EMAIL, "123456", "novaSenha"));
 
         verify(repository, never()).save(any());
+        verify(redisTemplate, never()).delete(eq(KEY));
+    }
+
+    @Test
+    void resetPasswordRejectsUnknownEmail() {
+        when(repository.findByEmail(EMAIL)).thenReturn(Optional.empty());
+
+        UserNotFoundException exception = assertThrows(UserNotFoundException.class,
+                () -> service.resetPassword(EMAIL, "123456", "novaSenha"));
+
+        assertEquals("E-mail não encontrado", exception.getMessage());
+        verify(repository, never()).save(any());
+        verify(redisTemplate, never()).delete(eq(KEY));
     }
 
     private User user() {
