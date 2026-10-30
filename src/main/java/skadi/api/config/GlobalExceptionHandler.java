@@ -17,6 +17,7 @@ import skadi.api.exceptions.AlertHandlingNotFoundException;
 import skadi.api.exceptions.AlertNotFoundException;
 import skadi.api.exceptions.ReportNotFoundException;
 import skadi.api.exceptions.ReportRuleViolationException;
+import skadi.api.exceptions.ResourceOutsideScopeException;
 import skadi.api.exceptions.JustificationAlreadyExistsException;
 import skadi.api.exceptions.JustificationNotFoundException;
 import skadi.api.exceptions.JustificationRuleViolationException;
@@ -70,7 +71,8 @@ public class GlobalExceptionHandler {
         ThermometerNotFoundException.class,
         NotificationNotFoundException.class,
         UserNotFoundException.class,
-        SupportRequestNotFoundException.class})
+        SupportRequestNotFoundException.class,
+        ResourceOutsideScopeException.class})
     public ResponseEntity<ErrorResponse> handleResourcesNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage(), Timestamp.from(Instant.now())));
