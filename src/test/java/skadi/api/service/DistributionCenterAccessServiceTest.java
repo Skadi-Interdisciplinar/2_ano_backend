@@ -9,6 +9,7 @@ import org.springframework.security.access.AccessDeniedException;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.model.DistributionCenter;
 import skadi.api.model.User;
+import skadi.api.exceptions.ResourceOutsideScopeException;
 import skadi.api.repository.AdminDistributionCenterRepository;
 
 import java.util.List;
@@ -48,8 +49,10 @@ class DistributionCenterAccessServiceTest {
         assertTrue(service.canRead(admin, 10L));
         assertFalse(service.canRead(admin, 11L));
         service.requireAdminOwnership(admin, 10L);
-        assertThrows(AccessDeniedException.class,
+        assertThrows(ResourceOutsideScopeException.class,
                 () -> service.requireAdminOwnership(admin, 11L));
+        assertThrows(ResourceOutsideScopeException.class,
+                () -> service.requireRead(admin, 11L));
     }
 
     @Test
@@ -66,8 +69,8 @@ class DistributionCenterAccessServiceTest {
 
     private User user(Long id, NivelAcesso level, Long distributionCenterId) {
         DistributionCenter distributionCenter = distributionCenterId == null ? null
-                : new DistributionCenter(distributionCenterId, "CD", "12345678901234");
+                : new DistributionCenter(distributionCenterId, "CD", "12345678901234", null);
         return new User(id, "Usuário", "usuario" + id, "12345678901",
-                "usuario" + id + "@teste.com", "senha", level, distributionCenter, null);
+                "usuario" + id + "@teste.com", "senha", level, distributionCenter, null, null);
     }
 }

@@ -165,7 +165,7 @@ class JustificationServiceTest {
     private User user() {
         return new User(7L, "Usuário", "usuario", "12345678901", "email@test.com",
                 "senha", NivelAcesso.OPERADOR,
-                new DistributionCenter(1L, "CD", "12345678901234"), 8);
+                new DistributionCenter(1L, "CD", "12345678901234", null), null, 8);
     }
 
     private void assertResponse(JustificationResponse response, Justification justification) {

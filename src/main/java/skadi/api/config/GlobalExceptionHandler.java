@@ -17,6 +17,7 @@ import skadi.api.exceptions.AlertHandlingNotFoundException;
 import skadi.api.exceptions.AlertNotFoundException;
 import skadi.api.exceptions.ReportNotFoundException;
 import skadi.api.exceptions.ReportRuleViolationException;
+import skadi.api.exceptions.ResourceOutsideScopeException;
 import skadi.api.exceptions.JustificationAlreadyExistsException;
 import skadi.api.exceptions.JustificationNotFoundException;
 import skadi.api.exceptions.JustificationRuleViolationException;
@@ -42,7 +43,12 @@ import skadi.api.exceptions.ThermometerNotFoundException;
 import skadi.api.exceptions.ThermometerRuleViolationException;
 import skadi.api.exceptions.ColdRoomInvalidTemperatureRangeException;
 import skadi.api.exceptions.ColdRoomRuleViolationException;
+import skadi.api.exceptions.AccessLevelChangeNotAllowedException;
 import skadi.api.exceptions.NotificationNotFoundException;
+import skadi.api.exceptions.SupportRequestNotFoundException;
+import skadi.api.exceptions.SupportRequestRuleViolationException;
+import skadi.api.exceptions.ResourceOutsideScopeException;
+import skadi.api.exceptions.UserNotFoundException;
 
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -64,7 +70,10 @@ public class GlobalExceptionHandler {
         AddressNotFoundException.class,
         StateNotFoundException.class,
         ThermometerNotFoundException.class,
-        NotificationNotFoundException.class})
+        NotificationNotFoundException.class,
+        UserNotFoundException.class,
+        SupportRequestNotFoundException.class,
+        ResourceOutsideScopeException.class})
     public ResponseEntity<ErrorResponse> handleResourcesNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage(), Timestamp.from(Instant.now())));
@@ -99,6 +108,18 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAlreadyExists(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ex.getMessage(), Timestamp.from(Instant.now())));
+    }
+
+    @ExceptionHandler(AccessLevelChangeNotAllowedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessLevelChange(AccessLevelChangeNotAllowedException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), Timestamp.from(Instant.now())));
+    }
+
+    @ExceptionHandler(SupportRequestRuleViolationException.class)
+    public ResponseEntity<ErrorResponse> handleSupportRequestRule(SupportRequestRuleViolationException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), Timestamp.from(Instant.now())));
     }
 
     @ExceptionHandler(BatchInvalidDatesException.class)

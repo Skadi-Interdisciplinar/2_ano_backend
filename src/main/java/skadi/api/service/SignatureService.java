@@ -13,6 +13,7 @@ import skadi.api.enums.NivelAcesso;
 import skadi.api.mapper.SignatureMapper;
 import skadi.api.model.Report;
 import skadi.api.model.Signature;
+import skadi.api.model.User;
 import skadi.api.repository.SignatureRepository;
 
 import java.util.List;
@@ -28,9 +29,10 @@ public class SignatureService {
     private final AuditUserContext auditUserContext;
 
     @Transactional
-    public SignatureResponse create(Integer reportId, SignatureRequest request, Integer userId) {
-        auditUserContext.setCurrentUser(userId);
-        Report report = reportService.findReportForAuthor(reportId, userId);
+    public SignatureResponse create(Integer reportId, SignatureRequest request, User user) {
+        Integer userId = Math.toIntExact(user.getId());
+        auditUserContext.setCurrentUser(user);
+        Report report = reportService.findReportForAuthor(reportId, user);
         if (repository.existsByReportId(reportId)) {
             throw new SignatureAlreadyExistsException(reportId);
         }
@@ -51,21 +53,39 @@ public class SignatureService {
         return SignatureMapper.toDTO(savedSignature);
     }
 
-    public Optional<SignatureResponse> findByReportId(Integer reportId, Integer cdId, NivelAcesso accessLevel) {
-        reportService.findReportForCd(reportId, cdId, accessLevel);
-        return repository.findByReportIdAndAuthorCd(reportId, cdId).map(SignatureMapper::toDTO);
+    public Optional<SignatureResponse> findByReportId(Integer reportId, User user) {
+        Report report = reportService.findReportForUser(reportId, user);
+        if (user.getNivelAcesso() == NivelAcesso.SUPER_ADMIN) {
+            return repository.findByReportId(reportId).map(SignatureMapper::toDTO);
+        }
+        return repository.findByReportIdAndReportCdIn(reportId, List.of(report.getDistributionCenterId()))
+                .map(SignatureMapper::toDTO);
     }
 
-    public List<SignatureResponse> findAllByCd(Integer cdId, NivelAcesso accessLevel) {
-        reportService.requireReportReadAccess(cdId, accessLevel);
-        return repository.findAllByReportAuthorCdOrderByIdDesc(cdId).stream()
+    public List<SignatureResponse> findAllByCd(User user) {
+        reportService.requireReportReadAccess(user);
+        List<Signature> signatures;
+        if (user.getNivelAcesso() == NivelAcesso.SUPER_ADMIN) {
+            signatures = repository.findAllByOrderByIdDesc();
+        } else {
+            List<Integer> cdIds = reportService.accessibleCdIds(user);
+            signatures = cdIds.isEmpty() ? List.of() : repository.findAllByReportCdIn(cdIds);
+        }
+        return signatures.stream()
                 .map(SignatureMapper::toDTO)
                 .toList();
     }
 
-    public SignatureResponse findById(Integer id, Integer cdId, NivelAcesso accessLevel) {
-        reportService.requireReportReadAccess(cdId, accessLevel);
-        Signature signature = repository.findByIdAndReportAuthorCd(id, cdId)
+    public SignatureResponse findById(Integer id, User user) {
+        reportService.requireReportReadAccess(user);
+        Optional<Signature> found;
+        if (user.getNivelAcesso() == NivelAcesso.SUPER_ADMIN) {
+            found = repository.findById(id);
+        } else {
+            List<Integer> cdIds = reportService.accessibleCdIds(user);
+            found = cdIds.isEmpty() ? Optional.empty() : repository.findByIdAndReportCdIn(id, cdIds);
+        }
+        Signature signature = found
                 .orElseThrow(() -> new SignatureNotFoundException(id));
         return SignatureMapper.toDTO(signature);
     }

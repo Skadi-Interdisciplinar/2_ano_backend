@@ -10,6 +10,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import skadi.api.config.TokenProvider;
 import skadi.api.dto.LoginRequest;
 import skadi.api.dto.RegisterRequest;
@@ -47,7 +48,7 @@ public class UserService {
 
 
 
-    @org.springframework.transaction.annotation.Transactional
+    @Transactional
     public void register(RegisterRequest request, User authenticatedUser) {
         validateRegistrationPermission(request, authenticatedUser);
         validateUniqueFields(request);
@@ -55,16 +56,11 @@ public class UserService {
         DistributionCenter distributionCenter = distributionCenterFor(request, authenticatedUser);
         validateManagerRules(request, distributionCenter);
 
-        User user = new User(
-                request.nome(),
-                request.username(),
-                request.cpf(),
-                request.email(),
-                request.senha(),
-                request.nivelAcesso(),
-                distributionCenter,
-                request.codGestor()
-        );
+        User user = UserMapper.fromDTO(request);
+        if (authenticatedUser.getNivelAcesso() != NivelAcesso.SUPER_ADMIN) {
+            user.setCdGestor(distributionCenter);
+            user.setCd(null);
+        }
         user.setSenha(passwordEncoder.encode(request.senha()));
 
         auditUserContext.setCurrentUser(authenticatedUser.getId());
@@ -94,9 +90,9 @@ public class UserService {
                 throw new AccessDeniedException(
                         "SUPER_ADMIN cadastra somente SUPER_ADMIN ou ADMIN.");
             }
-            if (request.cd() != null || request.codGestor() != null) {
+            if (request.cdGestor() != null || request.codGestor() != null) {
                 throw new AccessDeniedException(
-                        "ADMIN e SUPER_ADMIN não podem possuir CD direto ou gestor.");
+                        "ADMIN e SUPER_ADMIN não podem possuir CD único ou gestor.");
             }
             return;
         }
@@ -106,10 +102,11 @@ public class UserService {
                     && request.nivelAcesso() != NivelAcesso.OPERADOR) {
                 throw new AccessDeniedException("ADMIN cadastra somente GESTOR ou OPERADOR.");
             }
-            if (request.cd() == null || request.cd().getId() == null) {
+            Long cdId = uniqueCdId(request);
+            if (cdId == null) {
                 throw new AccessDeniedException("O CD do novo usuário é obrigatório.");
             }
-            accessService.requireAdminOwnership(authenticatedUser, request.cd().getId());
+            accessService.requireAdminOwnership(authenticatedUser, cdId);
             return;
         }
 
@@ -123,13 +120,20 @@ public class UserService {
         if (authenticatedUser.getNivelAcesso() == NivelAcesso.SUPER_ADMIN) {
             return null;
         }
-        return distributionCenterRepository.findById(request.cd().getId())
+        return distributionCenterRepository.findById(uniqueCdId(request))
                 .orElseThrow(CdNotFoundException::new);
+    }
+
+    private Long uniqueCdId(RegisterRequest request) {
+        if (request.cdGestor() == null || request.cdGestor().getId() == null) {
+            return null;
+        }
+        return request.cdGestor().getId();
     }
 
     private void validateManagerRules(RegisterRequest request, DistributionCenter distributionCenter) {
         if (request.nivelAcesso() == NivelAcesso.GESTOR) {
-            if (repository.existsByNivelAcessoAndCd_Id(NivelAcesso.GESTOR, distributionCenter.getId())) {
+            if (repository.existsByNivelAcessoAndCdGestor_Id(NivelAcesso.GESTOR, distributionCenter.getId())) {
                 throw new UserAlreadyExistsException(
                         "O centro de distribuição já possui um gestor responsável");
             }
@@ -139,7 +143,7 @@ public class UserService {
         }
 
         if (request.nivelAcesso() == NivelAcesso.OPERADOR) {
-            if (request.codGestor() == null || !repository.existsByIdAndNivelAcessoAndCd_Id(
+            if (request.codGestor() == null || !repository.existsByIdAndNivelAcessoAndCdGestor_Id(
                     request.codGestor().longValue(), NivelAcesso.GESTOR, distributionCenter.getId())) {
                 throw new AccessDeniedException(
                         "O operador deve possuir um gestor responsável do mesmo CD.");

@@ -53,7 +53,7 @@ public class BatchService {
         Category category = findCategory(request.categoryId());
         ColdRoom coldRoom = coldRoomRepository.findById(request.coldRoomId())
                 .orElseThrow(() -> new skadi.api.exceptions.ColdRoomNotFoundException(request.coldRoomId()));
-        accessService.requireOperationalWrite(user, coldRoom.getDistributionCenter().getId());
+        accessService.requireAdminOwnership(user, coldRoom.getDistributionCenter().getId());
 
         auditUserContext.setCurrentUser(user.getId());
         Batch batch = BatchMapper.fromRequest(request, category);
@@ -95,7 +95,7 @@ public class BatchService {
 
         Batch batch = findEntityById(id);
         BatchStorage firstStorage = findFirstStorage(id);
-        accessService.requireOperationalWrite(
+        accessService.requireAdminOwnership(
                 user, firstStorage.getColdRoom().getDistributionCenter().getId());
         if (!firstStorage.getColdRoom().getId().equals(request.coldRoomId())) {
             throw new BatchRuleViolationException(
@@ -122,8 +122,8 @@ public class BatchService {
     @Transactional
     public BatchResponse updateStatus(Long id, BatchStatus status, User user) {
         Batch batch = findEntityById(id);
-        accessService.requireOperationalWrite(user, findDistributionCenterId(id));
-        auditUserContext.setCurrentUser(user.getId());
+        accessService.requireAdminOwnership(user, findDistributionCenterId(id));
+        auditUserContext.setCurrentUser(user);
         batch.setStatus(status);
         return BatchMapper.toResponse(batchRepository.save(batch));
     }
@@ -131,7 +131,7 @@ public class BatchService {
     @Transactional
     public void delete(Long id, User user) {
         Batch batch = findEntityById(id);
-        accessService.requireOperationalWrite(user, findDistributionCenterId(id));
+        accessService.requireAdminOwnership(user, findDistributionCenterId(id));
         if (batchRepository.hasStorageHistory(id)) {
             throw new BatchRuleViolationException(
                     "O lote não pode ser excluído porque possui histórico de armazenamento"

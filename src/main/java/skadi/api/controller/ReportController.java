@@ -36,12 +36,12 @@ public class ReportController {
             @AuthenticationPrincipal User user
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(service.create(request, Math.toIntExact(user.getId())));
+                .body(service.create(request, user));
     }
 
     @GetMapping
     public ResponseEntity<List<ReportResponse>> findAll(@AuthenticationPrincipal User user) {
-        return ResponseEntity.ok(service.findAll(user.getCdId(), user.getNivelAcesso()));
+        return ResponseEntity.ok(service.findAll(user));
     }
 
     @GetMapping("/{id}")
@@ -49,7 +49,7 @@ public class ReportController {
             @PathVariable Integer id,
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.findById(id, user.getCdId(), user.getNivelAcesso()));
+        return ResponseEntity.ok(service.findById(id, user));
     }
 
     @PatchMapping("/{id}")
@@ -58,7 +58,7 @@ public class ReportController {
             @RequestBody ReportPatchRequest request,
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.update(id, request, Math.toIntExact(user.getId())));
+        return ResponseEntity.ok(service.update(id, request, user));
     }
 
     @DeleteMapping("/{id}")
@@ -66,7 +66,7 @@ public class ReportController {
             @PathVariable Integer id,
             @AuthenticationPrincipal User user
     ) {
-        service.delete(id, Math.toIntExact(user.getId()));
+        service.delete(id, user);
         return ResponseEntity.noContent().build();
     }
 
@@ -76,6 +76,6 @@ public class ReportController {
             @Valid @RequestBody ReportStatusUpdateRequest request,
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.updateStatus(id, request.status(), Math.toIntExact(user.getId())));
+        return ResponseEntity.ok(service.updateStatus(id, request.status(), user));
     }
 }

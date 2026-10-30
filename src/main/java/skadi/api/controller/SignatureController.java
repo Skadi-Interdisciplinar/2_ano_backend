@@ -31,7 +31,7 @@ public class SignatureController {
             @Valid @RequestBody SignatureRequest request,
             @AuthenticationPrincipal User user
     ) {
-        SignatureResponse signature = service.create(reportId, request, Math.toIntExact(user.getId()));
+        SignatureResponse signature = service.create(reportId, request, user);
         return ResponseEntity.status(HttpStatus.CREATED).body(signature);
     }
 
@@ -41,7 +41,7 @@ public class SignatureController {
             @AuthenticationPrincipal User user
     ) {
         Optional<SignatureResponse> signature = service.findByReportId(
-                reportId, user.getCdId(), user.getNivelAcesso());
+                reportId, user);
         return signature.map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
@@ -49,7 +49,7 @@ public class SignatureController {
     public ResponseEntity<List<SignatureResponse>> findAll(
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.findAllByCd(user.getCdId(), user.getNivelAcesso()));
+        return ResponseEntity.ok(service.findAllByCd(user));
     }
 
     @GetMapping("/signatures/{id}")
@@ -57,7 +57,7 @@ public class SignatureController {
             @PathVariable Integer id,
             @AuthenticationPrincipal User user
     ) {
-        return ResponseEntity.ok(service.findById(id, user.getCdId(), user.getNivelAcesso()));
+        return ResponseEntity.ok(service.findById(id, user));
     }
 
 }

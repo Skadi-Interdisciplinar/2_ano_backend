@@ -14,8 +14,12 @@ import skadi.api.enums.ReportStatus;
 import skadi.api.exceptions.ReportNotFoundException;
 import skadi.api.exceptions.ReportRuleViolationException;
 import skadi.api.model.Report;
+import skadi.api.model.User;
+import skadi.api.model.DistributionCenter;
 import skadi.api.repository.ReportRepository;
 import skadi.api.repository.SignatureRepository;
+import skadi.api.repository.AdminDistributionCenterRepository;
+import org.springframework.data.domain.Sort;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -45,12 +49,13 @@ class ReportServiceTest {
     @Mock private ReportRepository reportRepository;
     @Mock private SignatureRepository signatureRepository;
     @Mock private AuditUserContext auditUserContext;
+    @Mock private DistributionCenterAccessService accessService;
 
     private ReportService service;
 
     @BeforeEach
     void setUp() {
-        service = new ReportService(reportRepository, signatureRepository, auditUserContext);
+        service = new ReportService(reportRepository, signatureRepository, auditUserContext, accessService);
     }
 
     @Test
@@ -62,7 +67,7 @@ class ReportServiceTest {
             return saved;
         });
 
-        ReportResponse response = service.create(request, AUTHOR_ID);
+        ReportResponse response = service.create(request, adminUser());
 
         verifyAuditUser(AUTHOR_ID);
 
@@ -84,7 +89,7 @@ class ReportServiceTest {
         ReportRequest request = request("conteúdo", PERIOD_END, PERIOD_START);
 
         assertThrows(ReportRuleViolationException.class,
-                () -> service.create(request, AUTHOR_ID));
+                () -> service.create(request, adminUser()));
 
         verifyNoInteractions(reportRepository, signatureRepository);
     }
@@ -93,9 +98,11 @@ class ReportServiceTest {
     void findAll_returnsReportsMappedInRepositoryOrder() {
         Report first = report(REPORT_ID, AUTHOR_ID, ReportStatus.GERADO);
         Report second = report(13, 8, ReportStatus.ASSINADO);
-        when(reportRepository.findAllByAuthorCdOrderByGeneratedAtDesc(CD_ID)).thenReturn(List.of(first, second));
+        when(accessService.accessibleDistributionCenterIds(org.mockito.ArgumentMatchers.any())).thenReturn(List.of(1L));
+        when(reportRepository.findAllByDistributionCenterIdIn(List.of(CD_ID), Sort.by(Sort.Direction.DESC, "generatedAt")))
+                .thenReturn(List.of(first, second));
 
-        List<ReportResponse> result = service.findAll(CD_ID, NivelAcesso.GESTOR);
+        List<ReportResponse> result = service.findAll(user(NivelAcesso.GESTOR));
 
         assertEquals(2, result.size());
         assertResponse(result.get(0), first);
@@ -104,41 +111,46 @@ class ReportServiceTest {
 
     @Test
     void findAll_returnsEmptyListWhenThereAreNoReports() {
-        when(reportRepository.findAllByAuthorCdOrderByGeneratedAtDesc(CD_ID)).thenReturn(List.of());
+        when(accessService.accessibleDistributionCenterIds(org.mockito.ArgumentMatchers.any())).thenReturn(List.of(1L));
+        when(reportRepository.findAllByDistributionCenterIdIn(List.of(CD_ID), Sort.by(Sort.Direction.DESC, "generatedAt")))
+                .thenReturn(List.of());
 
-        assertEquals(List.of(), service.findAll(CD_ID, NivelAcesso.ADMIN));
+        assertEquals(List.of(), service.findAll(adminUser()));
     }
 
     @Test
     void findById_returnsMappedReport() {
         Report report = report(REPORT_ID, AUTHOR_ID, ReportStatus.GERADO);
-        when(reportRepository.findByIdAndAuthorCd(REPORT_ID, CD_ID)).thenReturn(Optional.of(report));
+        when(accessService.accessibleDistributionCenterIds(org.mockito.ArgumentMatchers.any())).thenReturn(List.of(1L));
+        when(reportRepository.findByIdAndDistributionCenterIdIn(REPORT_ID, List.of(CD_ID))).thenReturn(Optional.of(report));
 
-        ReportResponse result = service.findById(REPORT_ID, CD_ID, NivelAcesso.GESTOR);
+        ReportResponse result = service.findById(REPORT_ID, user(NivelAcesso.GESTOR));
 
         assertResponse(result, report);
     }
 
     @Test
     void findById_throwsWhenReportDoesNotExist() {
-        when(reportRepository.findByIdAndAuthorCd(REPORT_ID, CD_ID)).thenReturn(Optional.empty());
+        when(accessService.accessibleDistributionCenterIds(org.mockito.ArgumentMatchers.any())).thenReturn(List.of(1L));
+        when(reportRepository.findByIdAndDistributionCenterIdIn(REPORT_ID, List.of(CD_ID))).thenReturn(Optional.empty());
 
         assertThrows(ReportNotFoundException.class,
-                () -> service.findById(REPORT_ID, CD_ID, NivelAcesso.ADMIN));
+                () -> service.findById(REPORT_ID, adminUser()));
     }
 
     @Test
     void findAll_rejectsUsersWithoutReportAccess() {
-        assertThrows(AccessDeniedException.class, () -> service.findAll(CD_ID, NivelAcesso.OPERADOR));
-        assertThrows(AccessDeniedException.class, () -> service.findAll(null, NivelAcesso.GESTOR));
+        assertThrows(AccessDeniedException.class, () -> service.findAll(user(NivelAcesso.OPERADOR)));
+        User noCd = new User(); noCd.setId(9L); noCd.setNivelAcesso(NivelAcesso.GESTOR);
+        assertThrows(AccessDeniedException.class, () -> service.findAll(noCd));
         verifyNoInteractions(reportRepository);
     }
 
     @Test
-    void findById_rejectsSuperAdmin() {
-        assertThrows(AccessDeniedException.class,
-                () -> service.findById(REPORT_ID, CD_ID, NivelAcesso.SUPER_ADMIN));
-        verifyNoInteractions(reportRepository);
+    void findById_allowsSuperAdminToReadAnyReport() {
+        Report report = report(REPORT_ID, AUTHOR_ID, ReportStatus.GERADO);
+        when(reportRepository.findById(REPORT_ID)).thenReturn(Optional.of(report));
+        assertResponse(service.findById(REPORT_ID, user(NivelAcesso.SUPER_ADMIN)), report);
     }
 
     @Test
@@ -149,7 +161,7 @@ class ReportServiceTest {
                 .thenReturn(Optional.of(report));
         when(reportRepository.save(report)).thenReturn(report);
 
-        ReportResponse result = service.update(REPORT_ID, request, AUTHOR_ID);
+        ReportResponse result = service.update(REPORT_ID, request, adminUser());
 
         verifyAuditUser(AUTHOR_ID);
         assertEquals("conteúdo atualizado", report.getContent());
@@ -172,7 +184,7 @@ class ReportServiceTest {
                 .thenReturn(Optional.of(report));
         when(reportRepository.save(report)).thenReturn(report);
 
-        ReportResponse result = service.update(REPORT_ID, request, AUTHOR_ID);
+        ReportResponse result = service.update(REPORT_ID, request, adminUser());
 
         assertEquals("conteúdo novo", report.getContent());
         assertEquals(sha256("conteúdo novo"), report.getContentHash());
@@ -184,7 +196,7 @@ class ReportServiceTest {
     @Test
     void update_rejectsEmptyPatch() {
         assertThrows(ReportRuleViolationException.class,
-                () -> service.update(REPORT_ID, new ReportPatchRequest(null, null, null), AUTHOR_ID));
+                () -> service.update(REPORT_ID, new ReportPatchRequest(null, null, null), adminUser()));
 
         verifyNoInteractions(reportRepository, signatureRepository);
     }
@@ -199,7 +211,7 @@ class ReportServiceTest {
                 .thenReturn(Optional.of(report));
 
         assertThrows(ReportRuleViolationException.class,
-                () -> service.update(REPORT_ID, request, AUTHOR_ID));
+                () -> service.update(REPORT_ID, request, adminUser()));
 
         verify(reportRepository, never()).save(any(Report.class));
     }
@@ -210,7 +222,7 @@ class ReportServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(ReportNotFoundException.class,
-                () -> service.update(REPORT_ID, new ReportPatchRequest("novo", null, null), AUTHOR_ID));
+                () -> service.update(REPORT_ID, new ReportPatchRequest("novo", null, null), adminUser()));
     }
 
     @Test
@@ -220,7 +232,7 @@ class ReportServiceTest {
                 .thenReturn(Optional.of(report));
 
         assertThrows(ReportRuleViolationException.class,
-                () -> service.update(REPORT_ID, new ReportPatchRequest("novo", null, null), AUTHOR_ID));
+                () -> service.update(REPORT_ID, new ReportPatchRequest("novo", null, null), adminUser()));
 
         verify(reportRepository, never()).save(any(Report.class));
     }
@@ -232,7 +244,7 @@ class ReportServiceTest {
                 .thenReturn(Optional.of(report));
         when(signatureRepository.existsByReportId(REPORT_ID)).thenReturn(false);
 
-        service.delete(REPORT_ID, AUTHOR_ID);
+        service.delete(REPORT_ID, adminUser());
 
         verifyAuditUser(AUTHOR_ID);
         verify(signatureRepository).existsByReportId(REPORT_ID);
@@ -247,7 +259,7 @@ class ReportServiceTest {
         when(signatureRepository.existsByReportId(REPORT_ID)).thenReturn(true);
 
         assertThrows(ReportRuleViolationException.class,
-                () -> service.delete(REPORT_ID, AUTHOR_ID));
+                () -> service.delete(REPORT_ID, adminUser()));
 
         verify(reportRepository, never()).delete(any(Report.class));
     }
@@ -259,7 +271,7 @@ class ReportServiceTest {
                 .thenReturn(Optional.of(report));
 
         assertThrows(ReportRuleViolationException.class,
-                () -> service.delete(REPORT_ID, AUTHOR_ID));
+                () -> service.delete(REPORT_ID, adminUser()));
 
         verify(signatureRepository, never()).existsByReportId(REPORT_ID);
         verify(reportRepository, never()).delete(any(Report.class));
@@ -271,7 +283,7 @@ class ReportServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(ReportNotFoundException.class,
-                () -> service.delete(REPORT_ID, AUTHOR_ID));
+                () -> service.delete(REPORT_ID, adminUser()));
     }
 
     @Test
@@ -281,7 +293,7 @@ class ReportServiceTest {
                 .thenReturn(Optional.of(report));
         when(reportRepository.save(report)).thenReturn(report);
 
-        ReportResponse result = service.updateStatus(REPORT_ID, ReportStatus.ARQUIVADO, AUTHOR_ID);
+        ReportResponse result = service.updateStatus(REPORT_ID, ReportStatus.ARQUIVADO, adminUser());
 
         verifyAuditUser(AUTHOR_ID);
         assertEquals(ReportStatus.ARQUIVADO, report.getStatus());
@@ -295,7 +307,7 @@ class ReportServiceTest {
                 .thenReturn(Optional.of(report));
         when(reportRepository.save(report)).thenReturn(report);
 
-        ReportResponse result = service.updateStatus(REPORT_ID, ReportStatus.ASSINADO, AUTHOR_ID);
+        ReportResponse result = service.updateStatus(REPORT_ID, ReportStatus.ASSINADO, adminUser());
 
         assertEquals(ReportStatus.ASSINADO, report.getStatus());
         assertEquals(ReportStatus.ASSINADO, result.status());
@@ -308,9 +320,9 @@ class ReportServiceTest {
                 .thenReturn(Optional.of(report));
 
         assertThrows(ReportRuleViolationException.class,
-                () -> service.updateStatus(REPORT_ID, ReportStatus.ASSINADO, AUTHOR_ID));
+                () -> service.updateStatus(REPORT_ID, ReportStatus.ASSINADO, adminUser()));
         assertThrows(ReportRuleViolationException.class,
-                () -> service.updateStatus(REPORT_ID, ReportStatus.ARQUIVADO, AUTHOR_ID));
+                () -> service.updateStatus(REPORT_ID, ReportStatus.ARQUIVADO, adminUser()));
 
         verify(reportRepository, never()).save(any(Report.class));
     }
@@ -322,7 +334,7 @@ class ReportServiceTest {
                 .thenReturn(Optional.of(report));
 
         assertThrows(ReportRuleViolationException.class,
-                () -> service.updateStatus(REPORT_ID, ReportStatus.ARQUIVADO, AUTHOR_ID));
+                () -> service.updateStatus(REPORT_ID, ReportStatus.ARQUIVADO, adminUser()));
 
         verify(reportRepository, never()).save(any(Report.class));
     }
@@ -334,7 +346,7 @@ class ReportServiceTest {
                 .thenReturn(Optional.of(report));
 
         assertThrows(ReportRuleViolationException.class,
-                () -> service.updateStatus(REPORT_ID, null, AUTHOR_ID));
+                () -> service.updateStatus(REPORT_ID, null, adminUser()));
     }
 
     @Test
@@ -343,17 +355,18 @@ class ReportServiceTest {
                 .thenReturn(Optional.empty());
 
         assertThrows(ReportNotFoundException.class,
-                () -> service.updateStatus(REPORT_ID, ReportStatus.ARQUIVADO, AUTHOR_ID));
+                () -> service.updateStatus(REPORT_ID, ReportStatus.ARQUIVADO, adminUser()));
     }
 
     private ReportRequest request(String content, LocalDate start, LocalDate end) {
-        return new ReportRequest(content, start, end);
+        return new ReportRequest(content, start, end, CD_ID);
     }
 
     private Report report(Integer id, Integer authorId, ReportStatus status) {
         Report report = new Report();
         report.setId(id);
         report.setGeneratedByUserId(authorId);
+        report.setDistributionCenterId(CD_ID);
         report.setGeneratedAt(LocalDateTime.of(2026, 10, 10, 12, 0));
         report.setContent("conteúdo de teste");
         report.setContentHash(sha256("conteúdo de teste"));
@@ -376,6 +389,7 @@ class ReportServiceTest {
     private void assertResponse(ReportResponse response, Report report) {
         assertEquals(report.getId(), response.id());
         assertEquals(report.getGeneratedByUserId(), response.generatedByUserId());
+        assertEquals(report.getDistributionCenterId(), response.distributionCenterId());
         assertEquals(report.getGeneratedAt(), response.generatedAt());
         assertEquals(report.getContentHash(), response.contentHash());
         assertEquals(report.getPeriodStart(), response.periodStart());
@@ -385,6 +399,18 @@ class ReportServiceTest {
     }
 
     private void verifyAuditUser(Integer userId) {
-        verify(auditUserContext).setCurrentUser(userId);
+        verify(auditUserContext).setCurrentUser(adminUser());
     }
+
+    private User user(NivelAcesso role) {
+        User user = new User();
+        user.setId(role == NivelAcesso.ADMIN ? AUTHOR_ID.longValue() : 9L);
+        user.setNivelAcesso(role);
+        if (role == NivelAcesso.GESTOR || role == NivelAcesso.OPERADOR) {
+            user.setCd(List.of(new DistributionCenter(CD_ID.longValue(), "CD de teste", "12345678901234", null)));
+        }
+        return user;
+    }
+
+    private User adminUser() { return user(NivelAcesso.ADMIN); }
 }

@@ -37,7 +37,7 @@ class DistributionCenterServiceTest {
     @Test
     void createLinksTheNewDistributionCenterToTheAuthenticatedAdmin() {
         User admin = new User(7L, "Admin", "admin", "12345678901", "admin@teste.com",
-                "senha", NivelAcesso.ADMIN, null, null);
+                "senha", NivelAcesso.ADMIN, null, null, null);
         DistributionCenterRequest request = new DistributionCenterRequest(
                 "CD Principal", "12345678901234");
         when(repository.existsByCnpj(request.cnpj())).thenReturn(false);

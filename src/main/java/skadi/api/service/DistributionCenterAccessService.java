@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.model.User;
 import skadi.api.repository.AdminDistributionCenterRepository;
+import skadi.api.exceptions.ResourceOutsideScopeException;
 
 import java.util.List;
 
@@ -34,7 +35,7 @@ public class DistributionCenterAccessService {
     @Transactional(readOnly = true)
     public void requireRead(User user, Long distributionCenterId) {
         if (!canRead(user, distributionCenterId)) {
-            throw new AccessDeniedException("O usuário não possui acesso ao centro de distribuição informado.");
+            throw new ResourceOutsideScopeException();
         }
     }
 
@@ -44,8 +45,7 @@ public class DistributionCenterAccessService {
                 "Somente o administrador responsável pelo CD pode realizar esta operação.");
         if (!adminDistributionCenterRepository
                 .existsByAdmin_IdAndDistributionCenter_Id(user.getId(), distributionCenterId)) {
-            throw new AccessDeniedException(
-                    "O administrador só pode alterar dados dos centros de distribuição vinculados a ele.");
+            throw new ResourceOutsideScopeException();
         }
     }
 
@@ -61,6 +61,11 @@ public class DistributionCenterAccessService {
                 || user.getNivelAcesso() == NivelAcesso.SUPER_ADMIN) {
             throw new AccessDeniedException(
                     "SUPER_ADMIN possui acesso somente para consulta dos dados operacionais.");
+        }
+        if (user.getNivelAcesso() != NivelAcesso.ADMIN
+                && user.getNivelAcesso() != NivelAcesso.GESTOR
+                && user.getNivelAcesso() != NivelAcesso.OPERADOR) {
+            throw new AccessDeniedException("Perfil sem permissão para esta operação.");
         }
         requireRead(user, distributionCenterId);
     }
