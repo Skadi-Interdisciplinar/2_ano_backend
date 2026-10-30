@@ -46,6 +46,7 @@ import skadi.api.exceptions.AccessLevelChangeNotAllowedException;
 import skadi.api.exceptions.NotificationNotFoundException;
 import skadi.api.exceptions.SupportRequestNotFoundException;
 import skadi.api.exceptions.SupportRequestRuleViolationException;
+import skadi.api.exceptions.ResourceOutsideScopeException;
 import skadi.api.exceptions.UserNotFoundException;
 
 import java.sql.Timestamp;
@@ -71,6 +72,8 @@ public class GlobalExceptionHandler {
         NotificationNotFoundException.class,
         UserNotFoundException.class,
         SupportRequestNotFoundException.class})
+        ResourceOutsideScopeException.class})
+        UserNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleResourcesNotFound(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorResponse(HttpStatus.NOT_FOUND.value(), ex.getMessage(), Timestamp.from(Instant.now())));

@@ -40,7 +40,7 @@ public class BatchStorageService {
         Batch batch = lockBatch(batchId);
         ensureBatchHasNoActiveStorage(batchId);
         ColdRoom coldRoom = findColdRoom(request.coldRoomId());
-        accessService.requireOperationalWrite(user, coldRoom.getDistributionCenter().getId());
+        accessService.requireAdminOwnership(user, coldRoom.getDistributionCenter().getId());
         storageRepository.findFirstByBatch_IdOrderByEntryDateAsc(batchId)
                 .ifPresent(firstStorage -> ensureSameDistributionCenter(
                         firstStorage.getColdRoom(), coldRoom));
@@ -89,7 +89,7 @@ public class BatchStorageService {
         }
 
         ColdRoom destination = findColdRoom(request.coldRoomId());
-        accessService.requireOperationalWrite(
+        accessService.requireAdminOwnership(
                 user, currentStorage.getColdRoom().getDistributionCenter().getId());
         ensureSameDistributionCenter(currentStorage.getColdRoom(), destination);
         auditUserContext.setCurrentUser(user);
@@ -112,7 +112,7 @@ public class BatchStorageService {
         lockBatch(batchId);
         BatchStorage storage = findStorage(batchId, storageId);
         ensureStorageIsActive(storage);
-        accessService.requireOperationalWrite(
+        accessService.requireAdminOwnership(
                 user, storage.getColdRoom().getDistributionCenter().getId());
 
         auditUserContext.setCurrentUser(user);
