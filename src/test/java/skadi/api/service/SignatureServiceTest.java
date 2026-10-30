@@ -231,7 +231,7 @@ class SignatureServiceTest {
     private User superAdmin() { return user(NivelAcesso.SUPER_ADMIN, false); }
     private User user(NivelAcesso role, boolean withCd) {
         User user = new User(); user.setId(7L); user.setNivelAcesso(role);
-        if (withCd) user.setCd(new DistributionCenter(1L, "CD", "12345678901234"));
+        if (withCd) user.setCd(List.of(new DistributionCenter(1L, "CD", "12345678901234", null)));
         return user;
     }
 
