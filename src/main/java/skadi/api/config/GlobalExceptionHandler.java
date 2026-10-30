@@ -44,6 +44,7 @@ import skadi.api.exceptions.ThermometerRuleViolationException;
 import skadi.api.exceptions.ColdRoomInvalidTemperatureRangeException;
 import skadi.api.exceptions.ColdRoomRuleViolationException;
 import skadi.api.exceptions.AccessLevelChangeNotAllowedException;
+import skadi.api.exceptions.InvalidPasswordRecoveryCodeException;
 import skadi.api.exceptions.NotificationNotFoundException;
 import skadi.api.exceptions.SupportRequestNotFoundException;
 import skadi.api.exceptions.SupportRequestRuleViolationException;
@@ -112,6 +113,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessLevelChangeNotAllowedException.class)
     public ResponseEntity<ErrorResponse> handleAccessLevelChange(AccessLevelChangeNotAllowedException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), Timestamp.from(Instant.now())));
+    }
+
+    @ExceptionHandler(InvalidPasswordRecoveryCodeException.class)
+    public ResponseEntity<ErrorResponse> handleInvalidPasswordRecoveryCode(InvalidPasswordRecoveryCodeException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), Timestamp.from(Instant.now())));
     }
