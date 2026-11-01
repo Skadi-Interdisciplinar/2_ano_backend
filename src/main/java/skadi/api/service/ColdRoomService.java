@@ -40,7 +40,7 @@ public class ColdRoomService {
         Thermometer thermometer = findThermometer(request.thermometerId());
         validateThermometerAvailability(request.thermometerId(), null);
 
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         ColdRoom coldRoom = ColdRoomMapper.fromRequest(request, distributionCenter, thermometer);
         return ColdRoomMapper.toResponse(repository.save(coldRoom));
     }
@@ -89,7 +89,7 @@ public class ColdRoomService {
         Thermometer thermometer = findThermometer(request.thermometerId());
         validateThermometerAvailability(request.thermometerId(), id);
 
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         ColdRoomMapper.update(coldRoom, request, distributionCenter, thermometer);
         return ColdRoomMapper.toResponse(repository.save(coldRoom));
     }
@@ -112,7 +112,7 @@ public class ColdRoomService {
                     "A câmara frigorífica não pode ser excluída porque possui histórico de temperatura");
         }
 
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         repository.delete(coldRoom);
         repository.flush();
     }

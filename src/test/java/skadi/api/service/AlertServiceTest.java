@@ -107,7 +107,7 @@ class AlertServiceTest {
 
         service.recognize(1, user);
 
-        verify(auditUserContext).setCurrentUser(user);
+        verify(auditUserContext).setCurrentUser(7L);
         verify(query).executeUpdate();
     }
 

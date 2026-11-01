@@ -25,6 +25,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/readings")
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Leituras de temperatura")
 public class TemperatureReadingController {
 
     private final TemperatureReadingService service;

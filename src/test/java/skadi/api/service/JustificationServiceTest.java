@@ -29,6 +29,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -82,7 +83,7 @@ class JustificationServiceTest {
 
         JustificationResponse result = service.create(5, request, user());
 
-        verify(auditUserContext).setCurrentUser(any(User.class));
+        verify(auditUserContext).setCurrentUser(eq(7L));
         ArgumentCaptor<Justification> captor = ArgumentCaptor.forClass(Justification.class);
         verify(repository).save(captor.capture());
         assertEquals(5, captor.getValue().getAlertHandlingId());
@@ -112,7 +113,7 @@ class JustificationServiceTest {
         JustificationResponse result = service.update(5,
                 new JustificationPatchRequest("New reason", "New description"), user());
 
-        verify(auditUserContext).setCurrentUser(any(User.class));
+        verify(auditUserContext).setCurrentUser(eq(7L));
         assertEquals("New reason", result.reason());
         assertEquals("New description", result.description());
         assertEquals(5, result.alertHandlingId());
@@ -129,7 +130,7 @@ class JustificationServiceTest {
         JustificationResponse result = service.update(5,
                 new JustificationPatchRequest("New reason", null), user());
 
-        verify(auditUserContext).setCurrentUser(any(User.class));
+        verify(auditUserContext).setCurrentUser(eq(7L));
         assertEquals("New reason", result.reason());
         assertEquals("Keep this description", result.description());
         verify(repository).save(justification);

@@ -36,7 +36,7 @@ public class DistributionCenterService {
             throw new DuplicatedCnpjException();
         }
 
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         DistributionCenter cd = repository.save(DistributionCenterMapper.fromDTO(request));
         adminDistributionCenterRepository.save(new AdminDistributionCenter(user, cd));
         return DistributionCenterMapper.toDTO(cd);
@@ -76,7 +76,7 @@ public class DistributionCenterService {
             throw new DuplicatedCnpjException();
         }
 
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         cd.setName(request.name());
         cd.setCnpj(request.cnpj());
 
@@ -92,7 +92,7 @@ public class DistributionCenterService {
         DistributionCenter cd = repository.findById(id).orElseThrow(CdNotFoundException::new);
         accessService.requireAdminOwnership(user, id);
 
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         cd.setName(request.name());
 
         return DistributionCenterMapper.toDTO(repository.save(cd));
@@ -103,7 +103,7 @@ public class DistributionCenterService {
         DistributionCenter cd = repository.findById(id)
                 .orElseThrow(() -> new CdNotFoundException("Centro de distribuição não existe"));
         accessService.requireAdminOwnership(user, id);
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         adminDistributionCenterRepository.deleteByDistributionCenter_Id(id);
         adminDistributionCenterRepository.flush();
         repository.delete(cd);

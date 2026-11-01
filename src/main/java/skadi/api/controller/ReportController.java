@@ -25,6 +25,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/reports")
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Relatórios")
 public class ReportController {
 
     private final ReportService service;

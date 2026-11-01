@@ -49,7 +49,7 @@ class DistributionCenterServiceTest {
 
         service.insertCd(request, admin);
 
-        verify(auditUserContext).setCurrentUser(admin);
+        verify(auditUserContext).setCurrentUser(7L);
         ArgumentCaptor<AdminDistributionCenter> linkCaptor =
                 ArgumentCaptor.forClass(AdminDistributionCenter.class);
         verify(linkRepository).save(linkCaptor.capture());

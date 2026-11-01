@@ -63,7 +63,7 @@ public class UserService {
         }
         user.setSenha(passwordEncoder.encode(request.senha()));
 
-        auditUserContext.setCurrentUser(authenticatedUser);
+        auditUserContext.setCurrentUser(authenticatedUser.getId());
         repository.save(user);
     }
 

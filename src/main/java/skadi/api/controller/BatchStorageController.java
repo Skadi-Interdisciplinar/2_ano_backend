@@ -23,6 +23,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/batches/{batchId}/storages")
 @RequiredArgsConstructor
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Armazenamento de lotes")
 public class BatchStorageController {
 
     private final BatchStorageService service;

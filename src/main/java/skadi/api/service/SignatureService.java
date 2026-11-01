@@ -30,8 +30,7 @@ public class SignatureService {
 
     @Transactional
     public SignatureResponse create(Integer reportId, SignatureRequest request, User user) {
-        Integer userId = Math.toIntExact(user.getId());
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         Report report = reportService.findReportForAuthor(reportId, user);
         if (repository.existsByReportId(reportId)) {
             throw new SignatureAlreadyExistsException(reportId);

@@ -17,6 +17,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/notifications")
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Notificações")
 public class NotificationController {
     private final NotificationService service;
 
