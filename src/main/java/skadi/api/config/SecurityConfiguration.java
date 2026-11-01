@@ -63,7 +63,7 @@ public class SecurityConfiguration {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.POST, "/auth/recover-password", "/auth/reset-password")
+                        .requestMatchers(HttpMethod.POST, "/auth/recover-password", "/auth/verify-recovery-code")
                                 .permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/register")
                                 .hasAnyRole("SUPER_ADMIN", "ADMIN")

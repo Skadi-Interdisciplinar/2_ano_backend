@@ -48,13 +48,26 @@ public class UserController {
 
     @PostMapping("/auth/recover-password")
     public ResponseEntity<Void> recoverPassword(@Valid @RequestBody PasswordRecoveryRequest request) {
-        passwordRecoveryService.recoverPassword(request.email());
+        if (request.senha() == null || request.senha().isBlank()) {
+            passwordRecoveryService.recoverPassword(request.email());
+        } else {
+            passwordRecoveryService.resetPassword(request.email(), request.senha());
+        }
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/auth/reset-password")
-    public ResponseEntity<Void> resetPassword(@Valid @RequestBody PasswordResetRequest request) {
-        passwordRecoveryService.resetPassword(request.email(), request.codigo(), request.senha());
+    @PostMapping("/auth/verify-recovery-code")
+    public ResponseEntity<Void> verifyRecoveryCode(@Valid @RequestBody PasswordCodeVerificationRequest request) {
+        passwordRecoveryService.verifyCode(request.email(), request.codigo());
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/auth/change-password")
+    public ResponseEntity<Void> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            @AuthenticationPrincipal User user
+    ) {
+        service.changePassword(user, request.senhaAtual(), request.novaSenha(), request.confirmacaoSenha());
         return ResponseEntity.noContent().build();
     }
 

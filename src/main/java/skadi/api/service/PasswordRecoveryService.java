@@ -5,6 +5,7 @@ import jakarta.mail.internet.MimeMessage;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.mail.MailException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -19,12 +20,15 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class PasswordRecoveryService {
 
     private static final Duration CODE_TTL = Duration.ofMinutes(10);
     private static final String KEY_PREFIX = "skadi:senha:recuperacao:";
+    private static final String VERIFIED_PREFIX = "skadi:senha:recuperacao:verificado:";
+    private static final String VERIFIED = "ok";
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final UserRepository repository;
@@ -51,21 +55,40 @@ public class PasswordRecoveryService {
         User user = repository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("E-mail não encontrado"));
         String code = generateCode();
+        redisTemplate.delete(verifiedKey(email));
         redisTemplate.opsForValue().set(key(email), code, CODE_TTL);
         sendCode(user.getEmail(), code);
     }
 
+    public void verifyCode(String email, String codigo) {
+        requireUser(email);
+        requireValidCode(email, codigo);
+        redisTemplate.opsForValue().set(verifiedKey(email), VERIFIED, remainingTtl(email));
+        redisTemplate.delete(key(email));
+    }
+
     @Transactional
-    public void resetPassword(String email, String codigo, String senha) {
-        User user = repository.findByEmail(email)
-                .orElseThrow(() -> new UserNotFoundException("E-mail não encontrado"));
-        String stored = redisTemplate.opsForValue().get(key(email));
-        if (stored == null || !stored.equals(codigo)) {
+    public void resetPassword(String email, String senha) {
+        User user = requireUser(email);
+        String verified = redisTemplate.opsForValue().get(verifiedKey(email));
+        if (!VERIFIED.equals(verified)) {
             throw new InvalidPasswordRecoveryCodeException();
         }
         user.setSenha(passwordEncoder.encode(senha));
         repository.save(user);
-        redisTemplate.delete(key(email));
+        redisTemplate.delete(verifiedKey(email));
+    }
+
+    private User requireUser(String email) {
+        return repository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("E-mail não encontrado"));
+    }
+
+    private void requireValidCode(String email, String codigo) {
+        String stored = redisTemplate.opsForValue().get(key(email));
+        if (stored == null || !stored.equals(codigo)) {
+            throw new InvalidPasswordRecoveryCodeException();
+        }
     }
 
     private void sendCode(String email, String code) {
@@ -78,8 +101,8 @@ public class PasswordRecoveryService {
             helper.setText(htmlWithCode(code), true);
             helper.addInline("logo", new ClassPathResource("mail/logo.png"));
             mailSender.send(message);
-        } catch (MessagingException | IOException exception) {
-            throw new IllegalStateException("Não foi possível enviar o e-mail de recuperação", exception);
+        } catch (MessagingException | IOException | MailException exception ) {
+            throw new IllegalStateException(exception.getCause());
         }
     }
 
@@ -93,7 +116,19 @@ public class PasswordRecoveryService {
         return String.format("%06d", RANDOM.nextInt(1_000_000));
     }
 
+    private Duration remainingTtl(String email) {
+        Long seconds = redisTemplate.getExpire(key(email), TimeUnit.SECONDS);
+        if (seconds == null || seconds <= 0) {
+            throw new InvalidPasswordRecoveryCodeException();
+        }
+        return Duration.ofSeconds(seconds);
+    }
+
     private String key(String email) {
         return KEY_PREFIX + email;
+    }
+
+    private String verifiedKey(String email) {
+        return VERIFIED_PREFIX + email;
     }
 }

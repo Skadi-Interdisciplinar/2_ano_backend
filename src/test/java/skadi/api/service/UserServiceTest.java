@@ -22,6 +22,7 @@ import skadi.api.dto.LoginRequest;
 import skadi.api.dto.RegisterRequest;
 import skadi.api.dto.TokenResponse;
 import skadi.api.enums.NivelAcesso;
+import skadi.api.exceptions.PasswordConfirmationMismatchException;
 import skadi.api.exceptions.UserAlreadyExistsException;
 import skadi.api.model.DistributionCenter;
 import skadi.api.model.User;
@@ -29,12 +30,14 @@ import skadi.api.repository.UserRepository;
 import skadi.api.repository.DistributionCenterRepository;
 
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -171,6 +174,47 @@ class UserServiceTest {
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertEquals(500, response.getBody().statusCode());
         assertEquals("Erro inesperado: java.lang.IllegalStateException: falha", response.getBody().message());
+    }
+
+    @Test
+    void changePassword_updatesPasswordWhenCurrentMatchesAndConfirmationIsEqual() {
+        User authenticated = superAdmin();
+        when(repository.findById(1L)).thenReturn(Optional.of(authenticated));
+        when(passwordEncoder.matches("senha", "senha")).thenReturn(true);
+        when(passwordEncoder.encode("novaSenha")).thenReturn("hash");
+
+        userService.changePassword(authenticated, "senha", "novaSenha", "novaSenha");
+
+        assertEquals("hash", authenticated.getSenha());
+        verify(repository).save(authenticated);
+    }
+
+    @Test
+    void changePassword_rejectsWrongCurrentPassword() {
+        User authenticated = superAdmin();
+        when(repository.findById(1L)).thenReturn(Optional.of(authenticated));
+        when(passwordEncoder.matches("errada", "senha")).thenReturn(false);
+
+        BadCredentialsException erro = assertThrows(
+                BadCredentialsException.class,
+                () -> userService.changePassword(authenticated, "errada", "novaSenha", "novaSenha")
+        );
+
+        assertEquals("Senha atual incorreta", erro.getMessage());
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void changePassword_rejectsConfirmationMismatch() {
+        User authenticated = superAdmin();
+
+        assertThrows(
+                PasswordConfirmationMismatchException.class,
+                () -> userService.changePassword(authenticated, "senha", "novaSenha", "outraSenha")
+        );
+
+        verify(repository, never()).findById(any());
+        verify(repository, never()).save(any());
     }
 
     private User superAdmin() {

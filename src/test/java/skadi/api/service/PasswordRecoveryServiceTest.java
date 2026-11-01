@@ -22,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -38,6 +39,7 @@ class PasswordRecoveryServiceTest {
 
     private static final String EMAIL = "enzo@email.com";
     private static final String KEY = "skadi:senha:recuperacao:" + EMAIL;
+    private static final String VERIFIED_KEY = "skadi:senha:recuperacao:verificado:" + EMAIL;
 
     @Mock
     private UserRepository repository;
@@ -76,6 +78,7 @@ class PasswordRecoveryServiceTest {
         service.recoverPassword(EMAIL);
 
         ArgumentCaptor<String> codeCaptor = ArgumentCaptor.forClass(String.class);
+        verify(redisTemplate).delete(VERIFIED_KEY);
         verify(values).set(eq(KEY), codeCaptor.capture(), eq(Duration.ofMinutes(10)));
         String code = codeCaptor.getValue();
         assertTrue(code.matches("\\d{6}"));
@@ -104,41 +107,53 @@ class PasswordRecoveryServiceTest {
     }
 
     @Test
-    void resetPasswordChangesPasswordWhenCodeMatches() {
+    void verifyCodeAcceptsMatchingCodeAndMarksEmailAsVerified() {
+        when(repository.findByEmail(EMAIL)).thenReturn(Optional.of(user()));
+        when(values.get(KEY)).thenReturn("123456");
+        when(redisTemplate.getExpire(KEY, TimeUnit.SECONDS)).thenReturn(120L);
+
+        service.verifyCode(EMAIL, "123456");
+
+        verify(values).set(VERIFIED_KEY, "ok", Duration.ofSeconds(120));
+        verify(redisTemplate).delete(KEY);
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void verifyCodeRejectsInvalidCode() {
+        when(repository.findByEmail(EMAIL)).thenReturn(Optional.of(user()));
+        when(values.get(KEY)).thenReturn("123456");
+
+        assertThrows(InvalidPasswordRecoveryCodeException.class,
+                () -> service.verifyCode(EMAIL, "000000"));
+
+        verify(redisTemplate, never()).delete(eq(KEY));
+    }
+
+    @Test
+    void resetPasswordChangesPasswordAfterCodeWasVerified() {
         User user = user();
         when(repository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
-        when(values.get(KEY)).thenReturn("123456");
+        when(values.get(VERIFIED_KEY)).thenReturn("ok");
         when(passwordEncoder.encode("novaSenha")).thenReturn("hash");
 
-        service.resetPassword(EMAIL, "123456", "novaSenha");
+        service.resetPassword(EMAIL, "novaSenha");
 
         assertEquals("hash", user.getSenha());
         verify(repository).save(user);
-        verify(redisTemplate).delete(KEY);
+        verify(redisTemplate).delete(VERIFIED_KEY);
     }
 
     @Test
-    void resetPasswordRejectsInvalidCode() {
+    void resetPasswordRejectsWhenCodeWasNotVerified() {
         when(repository.findByEmail(EMAIL)).thenReturn(Optional.of(user()));
-        when(values.get(KEY)).thenReturn("123456");
+        when(values.get(VERIFIED_KEY)).thenReturn(null);
 
         assertThrows(InvalidPasswordRecoveryCodeException.class,
-                () -> service.resetPassword(EMAIL, "000000", "novaSenha"));
+                () -> service.resetPassword(EMAIL, "novaSenha"));
 
         verify(repository, never()).save(any());
-        verify(redisTemplate, never()).delete(eq(KEY));
-    }
-
-    @Test
-    void resetPasswordRejectsExpiredCode() {
-        when(repository.findByEmail(EMAIL)).thenReturn(Optional.of(user()));
-        when(values.get(KEY)).thenReturn(null);
-
-        assertThrows(InvalidPasswordRecoveryCodeException.class,
-                () -> service.resetPassword(EMAIL, "123456", "novaSenha"));
-
-        verify(repository, never()).save(any());
-        verify(redisTemplate, never()).delete(eq(KEY));
+        verify(redisTemplate, never()).delete(eq(VERIFIED_KEY));
     }
 
     @Test
@@ -146,7 +161,7 @@ class PasswordRecoveryServiceTest {
         when(repository.findByEmail(EMAIL)).thenReturn(Optional.empty());
 
         UserNotFoundException exception = assertThrows(UserNotFoundException.class,
-                () -> service.resetPassword(EMAIL, "123456", "novaSenha"));
+                () -> service.resetPassword(EMAIL, "novaSenha"));
 
         assertEquals("E-mail não encontrado", exception.getMessage());
         verify(repository, never()).save(any());
