@@ -42,8 +42,8 @@ public class User implements UserDetails {
     @Column(name = "nivel_acesso")
     private NivelAcesso nivelAcesso;
 
-    @ManyToOne
-    @JoinColumn(name = "cod_cd")
+    @OneToOne(cascade = CascadeType.ALL)
+    @JoinColumn(name = "cod_cd" )
     private DistributionCenter cdGestor;
 
      @ManyToMany
@@ -84,8 +84,8 @@ public class User implements UserDetails {
         if (cdGestor != null && cdGestor.getId() != null) {
             return Math.toIntExact(cdGestor.getId());
         }
-        if (cd != null && !cd.isEmpty() && cd.getFirst().getId() != null) {
-            return Math.toIntExact(cd.getFirst().getId());
+        if (cd != null && !cd.isEmpty() && cd.get(0).getId() != null) {
+            return Math.toIntExact(cd.get(0).getId());
         }
         return null;
     }

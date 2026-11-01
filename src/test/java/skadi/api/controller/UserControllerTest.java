@@ -5,22 +5,30 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
+import org.springframework.web.bind.support.WebDataBinderFactory;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.method.support.HandlerMethodArgumentResolver;
+import org.springframework.web.method.support.ModelAndViewContainer;
 import skadi.api.config.GlobalExceptionHandler;
 import skadi.api.dto.SupportRequestResponse;
 import skadi.api.dto.TokenResponse;
 import skadi.api.enums.SupportCategory;
 import skadi.api.enums.SupportStatus;
 import skadi.api.exceptions.InvalidPasswordRecoveryCodeException;
+import skadi.api.exceptions.PasswordConfirmationMismatchException;
 import skadi.api.exceptions.SupportRequestRuleViolationException;
 import skadi.api.exceptions.UserAlreadyExistsException;
 import skadi.api.exceptions.UserNotFoundException;
+import skadi.api.model.User;
 import skadi.api.service.PasswordRecoveryService;
 import skadi.api.service.SupportRequestService;
 import skadi.api.service.UserService;
@@ -62,6 +70,7 @@ class UserControllerTest {
         mockMvc = MockMvcBuilders
                 .standaloneSetup(new UserController(userService, supportRequestService, passwordRecoveryService))
                 .setControllerAdvice(new GlobalExceptionHandler())
+                .setCustomArgumentResolvers(authenticatedUserResolver())
                 .setValidator(validator)
                 .build();
     }
@@ -265,15 +274,14 @@ class UserControllerTest {
     }
 
     @Test
-    void resetPasswordReturns204() throws Exception {
-        doNothing().when(passwordRecoveryService).resetPassword("enzo@email.com", "123456", "novaSenha");
+    void recoverPasswordChangesPasswordAfterCodeWasVerified() throws Exception {
+        doNothing().when(passwordRecoveryService).resetPassword("enzo@email.com", "novaSenha");
 
-        mockMvc.perform(post("/auth/reset-password")
+        mockMvc.perform(post("/auth/recover-password")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "email": "enzo@email.com",
-                                  "codigo": "123456",
                                   "senha": "novaSenha"
                                 }
                                 """))
@@ -281,16 +289,15 @@ class UserControllerTest {
     }
 
     @Test
-    void resetPasswordReturns400WhenCodeIsInvalid() throws Exception {
+    void recoverPasswordReturns400WhenCodeWasNotVerified() throws Exception {
         doThrow(new InvalidPasswordRecoveryCodeException())
-                .when(passwordRecoveryService).resetPassword("enzo@email.com", "000000", "novaSenha");
+                .when(passwordRecoveryService).resetPassword("enzo@email.com", "novaSenha");
 
-        mockMvc.perform(post("/auth/reset-password")
+        mockMvc.perform(post("/auth/recover-password")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "email": "enzo@email.com",
-                                  "codigo": "000000",
                                   "senha": "novaSenha"
                                 }
                                 """))
@@ -300,16 +307,15 @@ class UserControllerTest {
     }
 
     @Test
-    void resetPasswordReturns404WhenEmailDoesNotExist() throws Exception {
+    void recoverPasswordReturns404WhenResetEmailDoesNotExist() throws Exception {
         doThrow(new UserNotFoundException("E-mail não encontrado"))
-                .when(passwordRecoveryService).resetPassword("ausente@email.com", "123456", "novaSenha");
+                .when(passwordRecoveryService).resetPassword("ausente@email.com", "novaSenha");
 
-        mockMvc.perform(post("/auth/reset-password")
+        mockMvc.perform(post("/auth/recover-password")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "email": "ausente@email.com",
-                                  "codigo": "123456",
                                   "senha": "novaSenha"
                                 }
                                 """))
@@ -333,20 +339,104 @@ class UserControllerTest {
     }
 
     @Test
-    void resetPasswordReturns400WhenCodeIsBlank() throws Exception {
-        mockMvc.perform(post("/auth/reset-password")
+    void verifyRecoveryCodeReturns204() throws Exception {
+        doNothing().when(passwordRecoveryService).verifyCode("enzo@email.com", "123456");
+
+        mockMvc.perform(post("/auth/verify-recovery-code")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
                                   "email": "enzo@email.com",
-                                  "codigo": "",
-                                  "senha": "novaSenha"
+                                  "codigo": "123456"
+                                }
+                                """))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void verifyRecoveryCodeReturns400WhenCodeIsInvalid() throws Exception {
+        doThrow(new InvalidPasswordRecoveryCodeException())
+                .when(passwordRecoveryService).verifyCode("enzo@email.com", "000000");
+
+        mockMvc.perform(post("/auth/verify-recovery-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "email": "enzo@email.com",
+                                  "codigo": "000000"
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.statusCode").value(400))
-                .andExpect(jsonPath("$.message").value("codigo: O código é obrigatório"));
+                .andExpect(jsonPath("$.message").value("Código de recuperação inválido ou expirado"));
+    }
 
-        verifyNoInteractions(passwordRecoveryService);
+    @Test
+    void changePasswordReturns204() throws Exception {
+        doNothing().when(userService).changePassword(any(User.class), org.mockito.ArgumentMatchers.eq("senha"),
+                org.mockito.ArgumentMatchers.eq("novaSenha"), org.mockito.ArgumentMatchers.eq("novaSenha"));
+
+        mockMvc.perform(post("/auth/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "senhaAtual": "senha",
+                                  "novaSenha": "novaSenha",
+                                  "confirmacaoSenha": "novaSenha"
+                                }
+                                """))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void changePasswordReturns401WhenCurrentPasswordIsWrong() throws Exception {
+        doThrow(new BadCredentialsException("Senha atual incorreta"))
+                .when(userService).changePassword(any(User.class), org.mockito.ArgumentMatchers.eq("errada"),
+                        org.mockito.ArgumentMatchers.eq("novaSenha"), org.mockito.ArgumentMatchers.eq("novaSenha"));
+
+        mockMvc.perform(post("/auth/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "senhaAtual": "errada",
+                                  "novaSenha": "novaSenha",
+                                  "confirmacaoSenha": "novaSenha"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Senha atual incorreta"));
+    }
+
+    @Test
+    void changePasswordReturns400WhenConfirmationDoesNotMatch() throws Exception {
+        doThrow(new PasswordConfirmationMismatchException())
+                .when(userService).changePassword(any(User.class), org.mockito.ArgumentMatchers.eq("senha"),
+                        org.mockito.ArgumentMatchers.eq("novaSenha"), org.mockito.ArgumentMatchers.eq("outraSenha"));
+
+        mockMvc.perform(post("/auth/change-password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "senhaAtual": "senha",
+                                  "novaSenha": "novaSenha",
+                                  "confirmacaoSenha": "outraSenha"
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("A confirmação da senha não confere"));
+    }
+
+    private HandlerMethodArgumentResolver authenticatedUserResolver() {
+        return new HandlerMethodArgumentResolver() {
+            @Override
+            public boolean supportsParameter(MethodParameter parameter) {
+                return parameter.hasParameterAnnotation(AuthenticationPrincipal.class);
+            }
+
+            @Override
+            public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
+                                          NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
+                return org.mockito.Mockito.mock(User.class);
+            }
+        };
     }
 }

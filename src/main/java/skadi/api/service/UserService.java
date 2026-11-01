@@ -17,7 +17,9 @@ import skadi.api.dto.RegisterRequest;
 import skadi.api.dto.RegisterResponse;
 import skadi.api.dto.TokenResponse;
 import skadi.api.enums.NivelAcesso;
+import skadi.api.exceptions.PasswordConfirmationMismatchException;
 import skadi.api.exceptions.UserAlreadyExistsException;
+import skadi.api.exceptions.UserNotFoundException;
 import skadi.api.mapper.UserMapper;
 import skadi.api.model.User;
 import skadi.api.model.DistributionCenter;
@@ -151,6 +153,23 @@ public class UserService {
         }
     }
 
+
+    @Transactional
+    public void changePassword(User authenticatedUser, String senhaAtual, String novaSenha, String confirmacaoSenha) {
+        if (authenticatedUser == null || authenticatedUser.getId() == null) {
+            throw new AccessDeniedException("Usuário autenticado não identificado.");
+        }
+        if (!novaSenha.equals(confirmacaoSenha)) {
+            throw new PasswordConfirmationMismatchException();
+        }
+        User user = repository.findById(authenticatedUser.getId())
+                .orElseThrow(() -> new UserNotFoundException("Usuário não encontrado"));
+        if (!passwordEncoder.matches(senhaAtual, user.getSenha())) {
+            throw new BadCredentialsException("Senha atual incorreta");
+        }
+        user.setSenha(passwordEncoder.encode(novaSenha));
+        repository.save(user);
+    }
 
     public TokenResponse login(LoginRequest dto) {
         try{
