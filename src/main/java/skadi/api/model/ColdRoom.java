@@ -29,9 +29,6 @@ public class ColdRoom {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "modelo", nullable = false, length = 150)
-    private String model;
-
     @Column(name = "localizacao", nullable = false, length = 100)
     private String location;
 

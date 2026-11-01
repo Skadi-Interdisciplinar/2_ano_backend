@@ -7,7 +7,6 @@ public record BatchStorageResponse(
         Long batchId,
         String batchCode,
         Long coldRoomId,
-        String coldRoomModel,
         String coldRoomLocation,
         Long distributionCenterId,
         String distributionCenterName,

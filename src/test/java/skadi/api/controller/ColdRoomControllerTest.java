@@ -57,19 +57,18 @@ class ColdRoomControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/cold-rooms/3"))
                 .andExpect(jsonPath("$.id").value(3))
-                .andExpect(jsonPath("$.model").value("Câmara vertical"))
+                .andExpect(jsonPath("$.location").value("Corredor A"))
                 .andExpect(jsonPath("$.distributionCenterName").value("Centro Principal"))
                 .andExpect(jsonPath("$.thermometerModel").value("DHT22"));
     }
 
     @Test
-    void createReturns400WhenModelIsBlank() throws Exception {
+    void createReturns400WhenLocationIsBlank() throws Exception {
         mockMvc.perform(post("/cold-room")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "model": " ",
-                                  "location": "Corredor A",
+                                  "location": " ",
                                   "minimumTemperature": -20.00,
                                   "maximumTemperature": -10.00,
                                   "distributionCenterId": 1,
@@ -88,8 +87,7 @@ class ColdRoomControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequest()))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value(
-                        "A temperatura mínima deve ser menor que a temperatura máxima"));
+                .andExpect(jsonPath("$.message").value(new ColdRoomInvalidTemperatureRangeException().getMessage()));
     }
 
     @Test
@@ -127,7 +125,7 @@ class ColdRoomControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validRequest()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.model").value("Câmara vertical"));
+                .andExpect(jsonPath("$.location").value("Corredor A"));
     }
 
     @Test
@@ -141,7 +139,7 @@ class ColdRoomControllerTest {
     @Test
     void deleteReturns409WhenColdRoomHasRelatedData() throws Exception {
         doThrow(new ColdRoomRuleViolationException(
-                "A câmara frigorífica não pode ser excluída porque possui alertas relacionados"))
+                "A cǽmara frigorfica nǜo pode ser excluda porque possui alertas relacionados"))
                 .when(service).delete(eq(3L), any());
 
         mockMvc.perform(delete("/cold-rooms/3"))
@@ -152,7 +150,6 @@ class ColdRoomControllerTest {
     private ColdRoomResponse coldRoom() {
         return new ColdRoomResponse(
                 3L,
-                "Câmara vertical",
                 "Corredor A",
                 new BigDecimal("-20.00"),
                 new BigDecimal("-10.00"),
@@ -166,7 +163,6 @@ class ColdRoomControllerTest {
     private String validRequest() {
         return """
                 {
-                  "model": "Câmara vertical",
                   "location": "Corredor A",
                   "minimumTemperature": -20.00,
                   "maximumTemperature": -10.00,

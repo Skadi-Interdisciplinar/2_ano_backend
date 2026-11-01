@@ -14,7 +14,6 @@ public final class BatchStorageMapper {
                 storage.getBatch().getId(),
                 storage.getBatch().getBatchCode(),
                 storage.getColdRoom().getId(),
-                storage.getColdRoom().getModel(),
                 storage.getColdRoom().getLocation(),
                 storage.getColdRoom().getDistributionCenter().getId(),
                 storage.getColdRoom().getDistributionCenter().getName(),
