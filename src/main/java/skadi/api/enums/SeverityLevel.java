@@ -5,5 +5,6 @@ public enum SeverityLevel {
     BAIXA,
     ATENCAO,
     URGENTE,
+    CRITICO,
     CRITICA
 }
