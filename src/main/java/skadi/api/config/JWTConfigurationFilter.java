@@ -2,6 +2,7 @@ package skadi.api.config;
 
 
 import ch.qos.logback.core.util.StringUtil;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -38,15 +39,17 @@ public class JWTConfigurationFilter extends OncePerRequestFilter {
             // validação de token
             String token = authorizationHeader.split(" ")[1];
 
-            if (tokenProvider.isTokenValid(token)){
-                String username = tokenProvider.getUsername(token);
-                UserDetails user = service.loadUserByUsername(username);
+            try {
+                if (tokenProvider.isTokenValid(token)){
+                    String username = tokenProvider.getUsername(token);
+                    UserDetails user = service.loadUserByUsername(username);
 
-                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+                    UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
 
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-
-
+                    SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+                }
+            } catch (JwtException e) {
+                // Token inválido ou expirado: não autentica no contexto e segue para o entryPoint responder 401
             }
         }
 
