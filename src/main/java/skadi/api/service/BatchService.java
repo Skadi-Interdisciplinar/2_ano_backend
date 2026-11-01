@@ -123,7 +123,7 @@ public class BatchService {
     public BatchResponse updateStatus(Long id, BatchStatus status, User user) {
         Batch batch = findEntityById(id);
         accessService.requireAdminOwnership(user, findDistributionCenterId(id));
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         batch.setStatus(status);
         return BatchMapper.toResponse(batchRepository.save(batch));
     }
