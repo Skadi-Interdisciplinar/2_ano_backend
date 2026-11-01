@@ -48,12 +48,12 @@ public class ColdRoomService {
     @Transactional(readOnly = true)
     public List<ColdRoomResponse> findAll(User user) {
         Sort sort = Sort.by(Sort.Direction.ASC, "location")
-                .and(Sort.by(Sort.Direction.ASC, "model"))
+                
                 .and(Sort.by(Sort.Direction.ASC, "id"));
         List<ColdRoom> coldRooms = user != null
                 && user.getNivelAcesso() == skadi.api.enums.NivelAcesso.SUPER_ADMIN
                 ? repository.findAll(sort)
-                : repository.findAllByDistributionCenter_IdInOrderByLocationAscModelAscIdAsc(
+                : repository.findAllByDistributionCenter_IdInOrderByLocationAscIdAsc(
                         accessService.accessibleDistributionCenterIds(user));
         return coldRooms.stream()
                 .map(ColdRoomMapper::toResponse)
@@ -74,7 +74,7 @@ public class ColdRoomService {
         accessService.requireAdminOwnership(user, currentDistributionCenterId);
         if (!currentDistributionCenterId.equals(request.distributionCenterId())) {
             throw new ColdRoomRuleViolationException(
-                    "Uma câmara frigorífica não pode ser transferida para outro centro de distribuição");
+                    "Uma cÃ¢mara frigorÃ­fica nÃ£o pode ser transferida para outro centro de distribuiÃ§Ã£o");
         }
         validateTemperatureRange(request);
 
@@ -82,7 +82,7 @@ public class ColdRoomService {
         boolean replacingThermometer = !currentThermometerId.equals(request.thermometerId());
         if (replacingThermometer && thermometerRepository.hasTemperatureReadings(currentThermometerId)) {
             throw new ColdRoomRuleViolationException(
-                    "O termômetro da câmara não pode ser substituído porque possui leituras de temperatura");
+                    "O termÃ´metro da cÃ¢mara nÃ£o pode ser substituÃ­do porque possui leituras de temperatura");
         }
 
         DistributionCenter distributionCenter = findDistributionCenter(request.distributionCenterId());
@@ -101,15 +101,15 @@ public class ColdRoomService {
 
         if (repository.hasBatchStorageHistory(id)) {
             throw new ColdRoomRuleViolationException(
-                    "A câmara frigorífica não pode ser excluída porque possui histórico de armazenamento de lotes");
+                    "A cÃ¢mara frigorÃ­fica nÃ£o pode ser excluÃ­da porque possui histÃ³rico de armazenamento de lotes");
         }
         if (repository.hasAlerts(id)) {
             throw new ColdRoomRuleViolationException(
-                    "A câmara frigorífica não pode ser excluída porque possui alertas relacionados");
+                    "A cÃ¢mara frigorÃ­fica nÃ£o pode ser excluÃ­da porque possui alertas relacionados");
         }
         if (thermometerRepository.hasTemperatureReadings(coldRoom.getThermometer().getId())) {
             throw new ColdRoomRuleViolationException(
-                    "A câmara frigorífica não pode ser excluída porque possui histórico de temperatura");
+                    "A cÃ¢mara frigorÃ­fica nÃ£o pode ser excluÃ­da porque possui histÃ³rico de temperatura");
         }
 
         auditUserContext.setCurrentUser(user.getId());
@@ -129,7 +129,7 @@ public class ColdRoomService {
                 : repository.existsByThermometer_IdAndIdNot(thermometerId, coldRoomId);
         if (alreadyAssigned) {
             throw new ColdRoomRuleViolationException(
-                    "O termômetro já está associado a outra câmara frigorífica");
+                    "O termÃ´metro jÃ¡ estÃ¡ associado a outra cÃ¢mara frigorÃ­fica");
         }
     }
 
@@ -141,7 +141,7 @@ public class ColdRoomService {
     private DistributionCenter findDistributionCenter(Long id) {
         return distributionCenterRepository.findById(id)
                 .orElseThrow(() -> new CdNotFoundException(
-                        "Centro de distribuição não encontrado com o id " + id));
+                        "Centro de distribuiÃ§Ã£o nÃ£o encontrado com o id " + id));
     }
 
     private Thermometer findThermometer(Long id) {
@@ -149,3 +149,4 @@ public class ColdRoomService {
                 .orElseThrow(() -> new ThermometerNotFoundException(id));
     }
 }
+

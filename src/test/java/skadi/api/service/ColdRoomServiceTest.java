@@ -74,17 +74,16 @@ class ColdRoomServiceTest {
         ArgumentCaptor<ColdRoom> captor = ArgumentCaptor.forClass(ColdRoom.class);
         verify(repository).save(captor.capture());
         assertEquals(3L, response.id());
-        assertEquals("Câmara vertical", response.model());
         assertEquals("Corredor A", response.location());
         assertEquals(1L, response.distributionCenterId());
         assertEquals(2L, response.thermometerId());
-        assertEquals("Câmara vertical", captor.getValue().getModel());
+        assertEquals("Corredor A", captor.getValue().getLocation());
     }
 
     @Test
     void createRejectsInvalidTemperatureRange() {
         ColdRoomRequest request = new ColdRoomRequest(
-                "Câmara vertical", "Corredor A",
+                "Corredor A",
                 new BigDecimal("5.00"), new BigDecimal("5.00"), 1L, 2L);
 
         assertThrows(ColdRoomInvalidTemperatureRangeException.class,
@@ -148,7 +147,7 @@ class ColdRoomServiceTest {
 
         ColdRoomResponse response = service.update(3L, request(1L, 2L), admin());
 
-        assertEquals("Câmara vertical", response.model());
+        assertEquals("Corredor A", response.location());
         assertEquals(new BigDecimal("-20.00"), response.minimumTemperature());
         assertEquals(new BigDecimal("-10.00"), response.maximumTemperature());
     }
@@ -214,7 +213,6 @@ class ColdRoomServiceTest {
 
     private ColdRoomRequest request(Long distributionCenterId, Long thermometerId) {
         return new ColdRoomRequest(
-                "  Câmara vertical  ",
                 "  Corredor A  ",
                 new BigDecimal("-20.00"),
                 new BigDecimal("-10.00"),
@@ -226,7 +224,6 @@ class ColdRoomServiceTest {
     private ColdRoom coldRoom() {
         return new ColdRoom(
                 3L,
-                "Câmara horizontal",
                 "Corredor B",
                 new BigDecimal("-18.00"),
                 new BigDecimal("-8.00"),
@@ -244,12 +241,12 @@ class ColdRoomServiceTest {
     }
 
     private User admin() {
-        return new User(10L, "Admin", "admin", "12345678901", "admin@skadi.com",
-                "senha", NivelAcesso.ADMIN, null, null, null);
+        return new User(50L, "Admin", "admin", "12345678901", "admin@skadi.com",
+                "senha", NivelAcesso.ADMIN, null, List.of(distributionCenter()), 60);
     }
 
     private User superAdmin() {
-        return new User(11L, "Root", "root", null, "root@skadi.com",
+        return new User(10L, "Super", "super", "12345678900", "super@skadi.com",
                 "senha", NivelAcesso.SUPER_ADMIN, null, null, null);
     }
 }
