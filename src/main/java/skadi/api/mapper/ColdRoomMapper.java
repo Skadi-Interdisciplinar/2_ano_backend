@@ -18,7 +18,6 @@ public final class ColdRoomMapper {
     ) {
         return new ColdRoom(
                 null,
-                request.model().trim(),
                 request.location().trim(),
                 request.minimumTemperature(),
                 request.maximumTemperature(),
@@ -33,7 +32,6 @@ public final class ColdRoomMapper {
             DistributionCenter distributionCenter,
             Thermometer thermometer
     ) {
-        coldRoom.setModel(request.model().trim());
         coldRoom.setLocation(request.location().trim());
         coldRoom.setMinimumTemperature(request.minimumTemperature());
         coldRoom.setMaximumTemperature(request.maximumTemperature());
@@ -44,7 +42,6 @@ public final class ColdRoomMapper {
     public static ColdRoomResponse toResponse(ColdRoom coldRoom) {
         return new ColdRoomResponse(
                 coldRoom.getId(),
-                coldRoom.getModel(),
                 coldRoom.getLocation(),
                 coldRoom.getMinimumTemperature(),
                 coldRoom.getMaximumTemperature(),

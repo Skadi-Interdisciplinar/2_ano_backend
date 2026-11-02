@@ -21,6 +21,7 @@ import skadi.api.service.JustificationService;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/alert-handlings/{alertHandlingId}/justification")
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Justificativas")
 public class JustificationController {
     private final JustificationService service;
 

@@ -69,13 +69,13 @@ class BatchStorageControllerTest {
     @Test
     void enterReturns409WhenBatchIsAlreadyStored() throws Exception {
         when(service.enter(org.mockito.ArgumentMatchers.eq(1L), any(), any()))
-                .thenThrow(new BatchStorageRuleViolationException("O lote já está armazenado"));
+                .thenThrow(new BatchStorageRuleViolationException("O lote jÃ¡ estÃ¡ armazenado"));
 
         mockMvc.perform(post("/batches/1/storages")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{ \"coldRoomId\": 3 }"))
                 .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.message").value("O lote já está armazenado"));
+                .andExpect(jsonPath("$.message").value("O lote jÃ¡ estÃ¡ armazenado"));
     }
 
     @Test
@@ -134,9 +134,7 @@ class BatchStorageControllerTest {
                 id,
                 1L,
                 "LOTE-2026-0015",
-                coldRoomId,
-                "Câmara vertical",
-                "Corredor A",
+                coldRoomId, "Corredor A",
                 5L,
                 "Centro Principal",
                 LocalDateTime.of(2026, 10, 16, 9, 0),
@@ -145,3 +143,4 @@ class BatchStorageControllerTest {
         );
     }
 }
+

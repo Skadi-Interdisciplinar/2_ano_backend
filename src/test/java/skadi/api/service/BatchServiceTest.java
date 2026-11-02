@@ -248,7 +248,7 @@ class BatchServiceTest {
     }
 
     private ColdRoom coldRoom() {
-        return new ColdRoom(3L, "Câmara", "Corredor A",
+        return new ColdRoom(3L, "Corredor A",
                 new BigDecimal("-20.00"), new BigDecimal("-10.00"),
                 new DistributionCenter(5L, "CD", "12345678000199", null),
                 new Thermometer(7L, "DHT22"));
@@ -260,3 +260,4 @@ class BatchServiceTest {
                 new DistributionCenter(5L, "CD", "12345678000199", null), null, null);
     }
 }
+

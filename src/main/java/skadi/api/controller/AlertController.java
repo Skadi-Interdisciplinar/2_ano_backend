@@ -18,6 +18,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/alerts")
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Alertas")
 public class AlertController {
 
     private final AlertService service;

@@ -20,6 +20,7 @@ import java.util.Optional;
 
 @RestController
 @RequiredArgsConstructor
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Assinaturas digitais")
 public class SignatureController {
 
     private final SignatureService service;

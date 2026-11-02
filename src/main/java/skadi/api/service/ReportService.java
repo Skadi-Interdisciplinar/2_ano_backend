@@ -41,7 +41,7 @@ public class ReportService {
     @Transactional
     public ReportResponse create(ReportRequest request, User user) {
         Integer userId = Math.toIntExact(user.getId());
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         accessService.requireAdminOwnership(user, request.distributionCenterId().longValue());
         validatePeriod(request.periodStart(), request.periodEnd());
 
@@ -103,7 +103,7 @@ public class ReportService {
 
     @Transactional
     public ReportResponse update(Integer id, ReportPatchRequest request, User user) {
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         accessService.requireRole(user, NivelAcesso.ADMIN, "Somente ADMIN pode alterar relatórios.");
         if (request.content() == null && request.periodStart() == null && request.periodEnd() == null) {
             throw new ReportRuleViolationException("Informe ao menos um campo para atualizar.");
@@ -128,7 +128,7 @@ public class ReportService {
 
     @Transactional
     public void delete(Integer id, User user) {
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         accessService.requireRole(user, NivelAcesso.ADMIN, "Somente ADMIN pode excluir relatórios.");
         Report report = findEditableReport(id, user);
         if (signatureRepository.existsByReportId(id)) {
@@ -139,7 +139,7 @@ public class ReportService {
 
     @Transactional
     public ReportResponse updateStatus(Integer id, ReportStatus requestedStatus, User user) {
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         accessService.requireRole(user, NivelAcesso.ADMIN, "Somente ADMIN pode alterar relatórios.");
         Report report = findOwnedReport(id, user);
 

@@ -2,6 +2,7 @@ package skadi.api.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.Size;
 import org.hibernate.annotations.Check;
 import lombok.AllArgsConstructor;
@@ -42,15 +43,18 @@ public class User implements UserDetails {
     private String email;
 
 
+    @JsonIgnore
     private String senha;
     @Enumerated(EnumType.STRING)
     @Column(name = "nivel_acesso")
     private NivelAcesso nivelAcesso;
 
+    @JsonIgnore
     @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "cod_cd" )
+    @JoinColumn(name = "cod_cd")
     private DistributionCenter cdGestor;
 
+     @JsonIgnore
      @ManyToMany
      @JoinTable(name = "tb_admin_cd",
              joinColumns = @JoinColumn(name = "cod_admin"),
@@ -131,3 +135,4 @@ public class User implements UserDetails {
         return this.senha;
     }
 }
+

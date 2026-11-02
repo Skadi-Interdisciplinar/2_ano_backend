@@ -276,7 +276,6 @@ class BatchStorageServiceTest {
     private ColdRoom coldRoom(Long id, Long distributionCenterId) {
         return new ColdRoom(
                 id,
-                "Câmara " + id,
                 "Corredor A",
                 new BigDecimal("-20.00"),
                 new BigDecimal("-10.00"),

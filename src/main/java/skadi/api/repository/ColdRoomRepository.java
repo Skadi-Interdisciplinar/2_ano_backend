@@ -16,7 +16,7 @@ public interface ColdRoomRepository extends JpaRepository<ColdRoom, Long> {
 
     boolean existsByThermometer_IdAndIdNot(Long thermometerId, Long id);
 
-    List<ColdRoom> findAllByDistributionCenter_IdInOrderByLocationAscModelAscIdAsc(
+    List<ColdRoom> findAllByDistributionCenter_IdInOrderByLocationAscIdAsc(
             Collection<Long> distributionCenterIds);
 
     @Query(value = """

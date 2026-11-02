@@ -47,7 +47,7 @@ public class JustificationService {
         }
         Justification justification = JustificationMapper.fromDTO(request, alertHandlingId);
         justification.setCreatedAt(LocalDateTime.now());
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         return JustificationMapper.toDTO(repository.save(justification));
     }
 
@@ -65,7 +65,7 @@ public class JustificationService {
         Justification justification = repository.findByAlertHandlingId(alertHandlingId)
                 .orElseThrow(() -> new JustificationNotFoundException(alertHandlingId));
         JustificationMapper.updateFromDTO(justification, request);
-        auditUserContext.setCurrentUser(user);
+        auditUserContext.setCurrentUser(user.getId());
         return JustificationMapper.toDTO(repository.save(justification));
     }
 

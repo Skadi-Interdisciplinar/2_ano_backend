@@ -399,7 +399,7 @@ class ReportServiceTest {
     }
 
     private void verifyAuditUser(Integer userId) {
-        verify(auditUserContext).setCurrentUser(adminUser());
+        verify(auditUserContext).setCurrentUser(userId.longValue());
     }
 
     private User user(NivelAcesso role) {

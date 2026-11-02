@@ -21,6 +21,7 @@ import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
+@io.swagger.v3.oas.annotations.tags.Tag(name = "Câmaras frigoríficas")
 public class ColdRoomController {
 
     private final ColdRoomService service;
