@@ -52,6 +52,9 @@ public class SupportRequestService {
     public SupportRequestResponse update(Long id, SupportRequestUpdateRequest request, User responsavel) {
         SupportRequest ticket = findTicket(id);
         SupportRequestMapper.update(ticket, request, responsavel);
+        if (ticket.getStatus() == SupportStatus.ATENDIDO) {
+            completeAttendedTicket(ticket, responsavel);
+        }
         return SupportRequestMapper.toResponse(repository.save(ticket));
     }
 
@@ -59,10 +62,9 @@ public class SupportRequestService {
         SupportRequest ticket = findTicket(id);
         boolean wasAttended = ticket.getStatus() == SupportStatus.ATENDIDO;
         ticket.setStatus(status);
-        if (status == SupportStatus.ATENDIDO && !wasAttended) {
-            ticket.setDataHoraEncerramento(nowUtcMinus3());
-            ticket.setResponsavel(responsavel);
-        } else if (wasAttended && status != SupportStatus.ATENDIDO) {
+        if (status == SupportStatus.ATENDIDO) {
+            completeAttendedTicket(ticket, responsavel);
+        } else if (wasAttended) {
             ticket.setDataHoraEncerramento(null);
         }
         return SupportRequestMapper.toResponse(repository.save(ticket));
@@ -71,6 +73,19 @@ public class SupportRequestService {
     public void delete(Long id) {
         findTicket(id);
         repository.deleteById(id);
+    }
+
+    private void completeAttendedTicket(SupportRequest ticket, User responsavel) {
+        if (ticket.getResposta() == null || ticket.getResposta().isBlank()) {
+            throw new SupportRequestRuleViolationException(
+                    "Uma solicitação atendida deve possuir responsável, resposta e data de encerramento.");
+        }
+        if (ticket.getResponsavel() == null) {
+            ticket.setResponsavel(responsavel);
+        }
+        if (ticket.getDataHoraEncerramento() == null) {
+            ticket.setDataHoraEncerramento(nowUtcMinus3());
+        }
     }
 
     private SupportRequest findTicket(Long id) {
