@@ -106,7 +106,7 @@ class UserControllerTest {
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                { "username": "enzo", "senha": "senha" }
+                                { "username": "enzo", "password": "senha" }
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.token").value("jwt-gerado"))
@@ -172,7 +172,7 @@ class UserControllerTest {
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                { "username": "enzo", "senha": "errada" }
+                                { "username": "enzo", "password": "errada" }
                                 """))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.statusCode").value(401))
@@ -188,7 +188,7 @@ class UserControllerTest {
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                { "username": "enzo", "senha": "senha" }
+                                { "username": "enzo", "password": "senha" }
                                 """))
                 .andExpect(status().isInternalServerError())
                 .andExpect(jsonPath("$.statusCode").value(500))

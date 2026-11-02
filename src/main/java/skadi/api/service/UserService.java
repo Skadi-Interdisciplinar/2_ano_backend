@@ -193,7 +193,7 @@ public class UserService {
     public TokenResponse login(LoginRequest dto) {
         try{
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(dto.username(), dto.senha())
+                    new UsernamePasswordAuthenticationToken(dto.username(), dto.password())
             );
 
             String token = tokenProvider.generateToken(authentication);
