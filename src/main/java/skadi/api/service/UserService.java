@@ -12,6 +12,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import skadi.api.config.TokenProvider;
+import skadi.api.dto.GestorResponse;
 import skadi.api.dto.LoginRequest;
 import skadi.api.dto.RegisterRequest;
 import skadi.api.dto.RegisterResponse;
@@ -63,6 +64,8 @@ public class UserService {
             user.setCdGestor(distributionCenter);
             user.setCd(null);
         }
+        user.setGestor(gestorReference(request.codGestor()));
+        user.validateGestorAssociation();
         user.setSenha(passwordEncoder.encode(request.senha()));
 
         auditUserContext.setCurrentUser(authenticatedUser.getId());
@@ -92,7 +95,7 @@ public class UserService {
                 throw new AccessDeniedException(
                         "SUPER_ADMIN cadastra somente SUPER_ADMIN ou ADMIN.");
             }
-            if (request.cdGestor() != null || request.codGestor() != null) {
+            if (request.cdGestor() != null || gestorId(request.codGestor()) != null) {
                 throw new AccessDeniedException(
                         "ADMIN e SUPER_ADMIN não podem possuir CD único ou gestor.");
             }
@@ -139,18 +142,34 @@ public class UserService {
                 throw new UserAlreadyExistsException(
                         "O centro de distribuição já possui um gestor responsável");
             }
-            if (request.codGestor() != null) {
+            if (gestorId(request.codGestor()) != null) {
                 throw new AccessDeniedException("GESTOR não pode possuir outro gestor responsável.");
             }
         }
 
         if (request.nivelAcesso() == NivelAcesso.OPERADOR) {
-            if (request.codGestor() == null || !repository.existsByIdAndNivelAcessoAndCdGestor_Id(
-                    request.codGestor().longValue(), NivelAcesso.GESTOR, distributionCenter.getId())) {
+            Long gestorId = gestorId(request.codGestor());
+            if (gestorId == null || !repository.existsByIdAndNivelAcessoAndCdGestor_Id(
+                    gestorId, NivelAcesso.GESTOR, distributionCenter.getId())) {
                 throw new AccessDeniedException(
                         "O operador deve possuir um gestor responsável do mesmo CD.");
             }
         }
+    }
+
+    private User gestorReference(GestorResponse gestor) {
+        Long gestorId = gestorId(gestor);
+        if (gestorId == null) {
+            return null;
+        }
+        return repository.getReferenceById(gestorId);
+    }
+
+    private Long gestorId(GestorResponse gestor) {
+        if (gestor == null) {
+            return null;
+        }
+        return gestor.id();
     }
 
 

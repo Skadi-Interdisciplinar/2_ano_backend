@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import skadi.api.dto.DistributionCenterResponse;
+import skadi.api.dto.GestorResponse;
 import skadi.api.dto.UserRequest;
 import skadi.api.dto.UserResponse;
 import skadi.api.enums.NivelAcesso;
@@ -43,7 +44,10 @@ class SuperAdminServiceTest {
     void updateChangesEditableFieldsAndKeepsAccessLevel() {
         DistributionCenter osasco = new DistributionCenter(7L, "CD 7", "12345678901234", null);
         User user = admin(osasco);
+        User gestor = new User();
+        gestor.setId(10L);
         when(repository.findById(3L)).thenReturn(Optional.of(user));
+        when(repository.getReferenceById(10L)).thenReturn(gestor);
         when(repository.save(user)).thenAnswer(invocation -> invocation.getArgument(0));
 
         UserResponse response = service.update(3L, request(NivelAcesso.ADMIN));
@@ -54,7 +58,7 @@ class SuperAdminServiceTest {
         assertEquals("10987654321", response.cpf());
         assertEquals("novo@email.com", response.email());
         assertEquals(NivelAcesso.ADMIN, response.nivelAcesso());
-        assertEquals(10, response.codGestor());
+        assertEquals(10L, response.codGestor().id());
         assertNull(response.cdGestor());
         assertEquals(7L, response.cd().getFirst().id());
         assertEquals("senha-atual", user.getSenha());
@@ -132,7 +136,7 @@ class SuperAdminServiceTest {
                 nivelAcesso,
                 null,
                 List.of(new DistributionCenterResponse(7L, "CD 7", "12345678901234")),
-                10
+                new GestorResponse(10L, null, null, null, null)
         );
     }
 }

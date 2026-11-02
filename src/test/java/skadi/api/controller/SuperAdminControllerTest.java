@@ -73,13 +73,13 @@ class SuperAdminControllerTest {
                 .andExpect(jsonPath("$.username").value("enzo.n"))
                 .andExpect(jsonPath("$.email").value("novo@email.com"))
                 .andExpect(jsonPath("$.nivelAcesso").value("ADMIN"))
-                .andExpect(jsonPath("$.codGestor").value(10));
+                .andExpect(jsonPath("$.codGestor.id").value(10));
 
         ArgumentCaptor<UserRequest> captor = ArgumentCaptor.forClass(UserRequest.class);
         verify(service).update(eq(3L), captor.capture());
         assertEquals("Enzo Nascimento", captor.getValue().nome());
         assertEquals(NivelAcesso.ADMIN, captor.getValue().nivelAcesso());
-        assertEquals(10, captor.getValue().codGestor());
+        assertEquals(10L, captor.getValue().codGestor().id());
     }
 
     @Test
@@ -278,7 +278,7 @@ class SuperAdminControllerTest {
                 NivelAcesso.ADMIN,
                 null,
                 List.of(new DistributionCenterResponse(7L, "CD 7", "12345678901234")),
-                10
+                new skadi.api.dto.GestorResponse(10L, null, null, null, null)
         );
     }
 
@@ -293,7 +293,7 @@ class SuperAdminControllerTest {
                   "nivelAcesso": "%s",
                   "cdGestor": null,
                   "cd": null,
-                  "codGestor": 10
+                  "codGestor": { "id": 10 }
                 }
                 """.formatted(nivelAcesso);
     }

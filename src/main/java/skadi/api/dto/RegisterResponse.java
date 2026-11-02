@@ -13,6 +13,6 @@ public record RegisterResponse(
         NivelAcesso nivelAcesso,
         DistributionCenter cdGestor,
         List<DistributionCenter> cd,
-        Integer codGestor
+        GestorResponse codGestor
 ) {
 }
