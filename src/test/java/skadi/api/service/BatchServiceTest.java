@@ -257,6 +257,6 @@ class BatchServiceTest {
     private User operator() {
         return new User(50L, "Operador", "operador", "12345678901", "op@skadi.com",
                 "senha", NivelAcesso.OPERADOR,
-                new DistributionCenter(5L, "CD", "12345678000199", null), null, 60);
+                new DistributionCenter(5L, "CD", "12345678000199", null), null, null);
     }
 }

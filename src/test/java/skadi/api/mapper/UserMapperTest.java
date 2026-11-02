@@ -2,6 +2,7 @@ package skadi.api.mapper;
 
 import org.junit.jupiter.api.Test;
 import skadi.api.dto.DistributionCenterResponse;
+import skadi.api.dto.GestorResponse;
 import skadi.api.dto.RegisterRequest;
 import skadi.api.dto.UserRequest;
 import skadi.api.dto.UserResponse;
@@ -22,7 +23,7 @@ class UserMapperTest {
         DistributionCenter osasco = new DistributionCenter(7L, "CD 7", "12345678901234", null);
         RegisterRequest request = new RegisterRequest(
                 "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.ADMIN,
-                osasco, List.of(osasco), 10
+                osasco, List.of(osasco), gestor(10L)
         );
 
         User user = UserMapper.fromDTO(request);
@@ -36,7 +37,7 @@ class UserMapperTest {
         assertEquals(NivelAcesso.ADMIN, user.getNivelAcesso());
         assertNull(user.getCdGestor());
         assertEquals(List.of(osasco), user.getCd());
-        assertEquals(10, user.getCodGestor());
+        assertEquals(10L, user.getGestor().getId());
     }
 
     @Test
@@ -44,7 +45,7 @@ class UserMapperTest {
         DistributionCenter osasco = new DistributionCenter(7L, "CD 7", "12345678901234", null);
         RegisterRequest request = new RegisterRequest(
                 "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.GESTOR,
-                osasco, List.of(osasco), 2
+                osasco, List.of(osasco), gestor(2L)
         );
 
         User user = UserMapper.fromDTO(request);
@@ -52,7 +53,7 @@ class UserMapperTest {
         assertEquals(NivelAcesso.GESTOR, user.getNivelAcesso());
         assertEquals(osasco, user.getCdGestor());
         assertNull(user.getCd());
-        assertEquals(2, user.getCodGestor());
+        assertEquals(2L, user.getGestor().getId());
     }
 
     @Test
@@ -60,7 +61,7 @@ class UserMapperTest {
         DistributionCenter osasco = new DistributionCenter(7L, "CD 7", "12345678901234", null);
         RegisterRequest request = new RegisterRequest(
                 "Enzo", "enzo", "12345678901", "enzo@email.com", "senha", NivelAcesso.OPERADOR,
-                osasco, List.of(osasco), 2
+                osasco, List.of(osasco), gestor(2L)
         );
 
         User user = UserMapper.fromDTO(request);
@@ -68,7 +69,7 @@ class UserMapperTest {
         assertEquals(NivelAcesso.OPERADOR, user.getNivelAcesso());
         assertEquals(osasco, user.getCdGestor());
         assertNull(user.getCd());
-        assertEquals(2, user.getCodGestor());
+        assertEquals(2L, user.getGestor().getId());
     }
 
     @Test
@@ -84,14 +85,14 @@ class UserMapperTest {
         assertEquals(NivelAcesso.SUPER_ADMIN, user.getNivelAcesso());
         assertNull(user.getCdGestor());
         assertNull(user.getCd());
-        assertNull(user.getCodGestor());
+        assertNull(user.getGestor());
     }
 
     @Test
     void toDTO_copiesAdminFieldsWithCdList() {
         DistributionCenter osasco = new DistributionCenter(7L, "CD 7", "12345678901234", null);
         User user = new User(3L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha",
-                NivelAcesso.ADMIN, null, List.of(osasco), 10);
+                NivelAcesso.ADMIN, null, List.of(osasco), gestorUser(10L));
 
         var dto = UserMapper.toDTO(user);
 
@@ -99,14 +100,14 @@ class UserMapperTest {
         assertEquals("enzo", dto.username());
         assertNull(dto.cdGestor());
         assertEquals(List.of(osasco), dto.cd());
-        assertEquals(10, dto.codGestor());
+        assertEquals(10L, dto.codGestor().id());
     }
 
     @Test
     void toDTO_copiesOperadorFieldsWithUniqueCd() {
         DistributionCenter osasco = new DistributionCenter(7L, "CD 7", "12345678901234", null);
         User user = new User(3L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha",
-                NivelAcesso.OPERADOR, osasco, null, 2);
+                NivelAcesso.OPERADOR, osasco, null, gestorUser(2L));
 
         var dto = UserMapper.toDTO(user);
 
@@ -114,7 +115,7 @@ class UserMapperTest {
         assertEquals("enzo", dto.username());
         assertEquals(osasco, dto.cdGestor());
         assertNull(dto.cd());
-        assertEquals(2, dto.codGestor());
+        assertEquals(2L, dto.codGestor().id());
     }
 
     @Test
@@ -141,7 +142,7 @@ class UserMapperTest {
     void toResponse_mapsOperadorWithUniqueCd() {
         DistributionCenter osasco = new DistributionCenter(7L, "CD 7", "12345678901234", null);
         User user = new User(4L, "Ana", "ana", "10987654321", "ana@email.com", "senha",
-                NivelAcesso.OPERADOR, osasco, null, 2);
+                NivelAcesso.OPERADOR, osasco, null, gestorUser(2L));
 
         UserResponse response = UserMapper.toResponse(user);
 
@@ -149,14 +150,14 @@ class UserMapperTest {
         assertEquals(NivelAcesso.OPERADOR, response.nivelAcesso());
         assertEquals(7L, response.cdGestor().id());
         assertNull(response.cd());
-        assertEquals(2, response.codGestor());
+        assertEquals(2L, response.codGestor().id());
     }
 
     @Test
     void update_appliesAdminFieldsAndKeepsIdAndPassword() {
         DistributionCenter antigo = new DistributionCenter(1L, "CD antigo", "11111111111111", null);
         User user = new User(3L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha-atual",
-                NivelAcesso.OPERADOR, antigo, null, 2);
+                NivelAcesso.OPERADOR, antigo, null, gestorUser(2L));
         UserRequest request = new UserRequest(
                 99L, "Enzo Nascimento", "enzo.n", "10987654321", "novo@email.com", NivelAcesso.ADMIN,
                 new DistributionCenterResponse(1L, "CD antigo", "11111111111111"),
@@ -176,7 +177,7 @@ class UserMapperTest {
         assertEquals(NivelAcesso.ADMIN, updated.getNivelAcesso());
         assertSame(antigo, updated.getCdGestor());
         assertNull(updated.getCd());
-        assertNull(updated.getCodGestor());
+        assertNull(updated.getGestor());
     }
 
     @Test
@@ -188,7 +189,7 @@ class UserMapperTest {
                 4L, "Ana", "ana", "10987654321", "ana@email.com", NivelAcesso.OPERADOR,
                 new DistributionCenterResponse(8L, "CD 8", "22345678901234"),
                 List.of(new DistributionCenterResponse(7L, "CD 7", "12345678901234")),
-                2
+                gestor(2L)
         );
 
         User updated = UserMapper.update(user, request);
@@ -196,7 +197,17 @@ class UserMapperTest {
         assertEquals(NivelAcesso.OPERADOR, updated.getNivelAcesso());
         assertNull(updated.getCdGestor());
         assertEquals(List.of(osasco), updated.getCd());
-        assertEquals(2, updated.getCodGestor());
+        assertEquals(2L, updated.getGestor().getId());
         assertEquals("senha", updated.getSenha());
+    }
+
+    private GestorResponse gestor(Long id) {
+        return new GestorResponse(id, null, null, null, null);
+    }
+
+    private User gestorUser(Long id) {
+        User gestor = new User();
+        gestor.setId(id);
+        return gestor;
     }
 }
