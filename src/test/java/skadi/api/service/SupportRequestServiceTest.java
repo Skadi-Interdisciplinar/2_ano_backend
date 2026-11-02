@@ -155,6 +155,7 @@ class SupportRequestServiceTest {
     @Test
     void updateStatusToAttendedFillsClosingTimeInUtcMinus3() {
         SupportRequest ticket = openTicket();
+        ticket.setResposta("Chamado resolvido.");
         when(repository.findById(1L)).thenReturn(Optional.of(ticket));
         when(repository.save(ticket)).thenAnswer(invocation -> invocation.getArgument(0));
         LocalDateTime before = LocalDateTime.now(UTC_MINUS_3).minusSeconds(2);
@@ -163,6 +164,7 @@ class SupportRequestServiceTest {
 
         LocalDateTime after = LocalDateTime.now(UTC_MINUS_3).plusSeconds(2);
         assertEquals(SupportStatus.ATENDIDO, response.status());
+        assertEquals("Chamado resolvido.", response.resposta());
         assertEquals(9L, response.codUsuarioResponsavel());
         assertFalse(response.dataHoraEncerramento().isBefore(before));
         assertFalse(response.dataHoraEncerramento().isAfter(after));
@@ -187,6 +189,7 @@ class SupportRequestServiceTest {
     void updateStatusLeavingAttendedClearsClosingTime() {
         SupportRequest ticket = openTicket();
         ticket.setStatus(SupportStatus.ATENDIDO);
+        ticket.setResposta("Chamado resolvido.");
         ticket.setDataHoraEncerramento(LocalDateTime.of(2026, 10, 29, 9, 0));
         ticket.setResponsavel(user(9L));
         when(repository.findById(1L)).thenReturn(Optional.of(ticket));
@@ -204,6 +207,7 @@ class SupportRequestServiceTest {
         SupportRequest ticket = openTicket();
         LocalDateTime encerramento = LocalDateTime.of(2026, 10, 29, 9, 0);
         ticket.setStatus(SupportStatus.ATENDIDO);
+        ticket.setResposta("Chamado resolvido.");
         ticket.setDataHoraEncerramento(encerramento);
         ticket.setResponsavel(user(9L));
         when(repository.findById(1L)).thenReturn(Optional.of(ticket));
@@ -214,6 +218,23 @@ class SupportRequestServiceTest {
         assertEquals(SupportStatus.ATENDIDO, response.status());
         assertEquals(encerramento, response.dataHoraEncerramento());
         assertEquals(9L, response.codUsuarioResponsavel());
+    }
+
+    @Test
+    void updateStatusToAttendedRejectsTicketWithoutAnswer() {
+        SupportRequest ticket = openTicket();
+        when(repository.findById(1L)).thenReturn(Optional.of(ticket));
+
+        SupportRequestRuleViolationException exception = assertThrows(
+                SupportRequestRuleViolationException.class,
+                () -> service.updateStatus(1L, SupportStatus.ATENDIDO, user(9L))
+        );
+
+        assertEquals(
+                "Uma solicitação atendida deve possuir responsável, resposta e data de encerramento.",
+                exception.getMessage()
+        );
+        verify(repository, never()).save(any());
     }
 
     @Test
