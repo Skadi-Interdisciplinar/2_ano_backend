@@ -1,4 +1,9 @@
 package skadi.api.dto;
 
-public record LoginRequest(String username, String password) {
+import com.fasterxml.jackson.annotation.JsonAlias;
+
+public record LoginRequest(
+        String username,
+        @JsonAlias({"senha"}) String password
+) {
 }
