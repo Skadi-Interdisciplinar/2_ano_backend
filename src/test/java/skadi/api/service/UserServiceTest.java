@@ -64,6 +64,7 @@ class UserServiceTest {
     @Mock private DistributionCenterRepository distributionCenterRepository;
     @Mock private DistributionCenterAccessService accessService;
     @Mock private AuditUserContext auditUserContext;
+    @Mock private AccessLogService accessLogService;
 
     private final GlobalExceptionHandler exceptionHandler = new GlobalExceptionHandler();
 
@@ -72,7 +73,7 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         userService = new UserService(repository, authenticationManager, tokenProvider, passwordEncoder,
-                distributionCenterRepository, accessService, auditUserContext);
+                distributionCenterRepository, accessService, auditUserContext, accessLogService);
         ReflectionTestUtils.setField(userService, "expirationTime", 3600L);
     }
 
@@ -166,13 +167,15 @@ class UserServiceTest {
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
         when(tokenProvider.generateToken(authentication)).thenReturn("jwt-gerado");
+        when(authentication.getPrincipal()).thenReturn(superAdmin());
 
-        TokenResponse response = userService.login(request);
+        TokenResponse response = userService.login(request, "192.0.2.15", "PostmanRuntime/test");
 
         assertEquals("jwt-gerado", response.token());
         assertEquals(3600L, response.expirationTime());
         assertNotNull(response.validUntil());
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
+        verify(accessLogService).registerAttempt(1L, true, "192.0.2.15", "PostmanRuntime/test", null);
     }
 
     @Test
@@ -183,13 +186,16 @@ class UserServiceTest {
 
         BadCredentialsException erro = assertThrows(
                 BadCredentialsException.class,
-                () -> userService.login(request)
+                () -> userService.login(request, "192.0.2.15", "PostmanRuntime/test")
         );
         ResponseEntity<ErrorResponse> response = exceptionHandler.handleBadCredentials(erro);
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
         assertEquals(401, response.getBody().statusCode());
         assertEquals("Credenciais inválidas", response.getBody().message());
+        verify(accessLogService).registerAttempt(
+                null, false, "192.0.2.15", "PostmanRuntime/test", "CREDENCIAIS_INVALIDAS"
+        );
     }
 
     @Test
@@ -198,7 +204,8 @@ class UserServiceTest {
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new IllegalStateException("falha"));
 
-        RuntimeException erro = assertThrows(RuntimeException.class, () -> userService.login(request));
+        RuntimeException erro = assertThrows(RuntimeException.class,
+                () -> userService.login(request, "192.0.2.15", "PostmanRuntime/test"));
         ResponseEntity<ErrorResponse> response = exceptionHandler.handleRuntime(erro);
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());

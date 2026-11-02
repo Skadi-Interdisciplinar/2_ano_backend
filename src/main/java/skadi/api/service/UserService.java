@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -44,6 +45,7 @@ public class UserService {
     private final DistributionCenterRepository distributionCenterRepository;
     private final DistributionCenterAccessService accessService;
     private final AuditUserContext auditUserContext;
+    private final AccessLogService accessLogService;
 
     @Value("${jwt.expiration}")
     private Long expirationTime;
@@ -201,20 +203,38 @@ public class UserService {
         return UserMapper.toResponse(user);
     }
 
-    public TokenResponse login(LoginRequest dto) {
-        try{
+    public TokenResponse login(LoginRequest dto, String ipAddress, String userAgent) {
+        try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(dto.username(), dto.password())
             );
 
             String token = tokenProvider.generateToken(authentication);
+            User user = (User) authentication.getPrincipal();
+            accessLogService.registerAttempt(
+                    user.getId(),
+                    true,
+                    ipAddress,
+                    userAgent,
+                    null
+            );
 
-            return new TokenResponse(token, expirationTime, Timestamp.from(Instant.now().plusSeconds(expirationTime)));
-    }catch (BadCredentialsException bad){
+            return new TokenResponse(
+                    token,
+                    expirationTime,
+                    Timestamp.from(Instant.now().plusSeconds(expirationTime))
+            );
+        } catch (AuthenticationException authenticationException) {
+            accessLogService.registerAttempt(
+                    null,
+                    false,
+                    ipAddress,
+                    userAgent,
+                    "CREDENCIAIS_INVALIDAS"
+            );
             throw new BadCredentialsException("Credenciais inválidas");
+        } catch (Exception exception) {
+            throw new RuntimeException("Erro inesperado: " + exception);
         }
-    catch(Exception e){
-            throw new RuntimeException("Erro inesperado: " + e);
-    }
     }
 }
