@@ -2,6 +2,8 @@ package skadi.api.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Range;
+import org.springframework.data.redis.connection.Limit;
 import org.springframework.data.redis.connection.RedisStreamCommands;
 import org.springframework.data.redis.connection.stream.RecordId;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -18,6 +20,7 @@ import skadi.api.enums.NivelAcesso;
 import skadi.api.repository.TemperatureReadingRepository;
 import skadi.api.repository.ColdRoomRepository;
 import skadi.api.repository.ThermometerRepository;
+import skadi.api.model.ColdRoom;
 import skadi.api.model.User;
 import skadi.api.exceptions.ThermometerNotFoundException;
 
@@ -25,8 +28,11 @@ import java.time.OffsetDateTime;
 import java.time.LocalDateTime;
 import java.time.Duration;
 import java.sql.Timestamp;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.List;
@@ -91,6 +97,73 @@ public class TemperatureReadingService {
 
     public List<TemperatureReadingView> findAll(Integer cdId, NivelAcesso accessLevel) {
         boolean allCds = hasGlobalReadAccess(cdId, accessLevel);
+
+        // 1. Prioriza leituras mais recentes do Redis Stream
+        if (redisTemplate != null) {
+            try {
+                List<ColdRoom> coldRooms = allCds
+                        ? coldRoomRepository.findAll()
+                        : coldRoomRepository.findAllByDistributionCenter_IdInOrderByLocationAscIdAsc(List.of(cdId.longValue()));
+
+                Map<String, ColdRoom> termToCr = new HashMap<>();
+                for (ColdRoom cr : coldRooms) {
+                    if (cr.getThermometer() != null) {
+                        termToCr.put(cr.getThermometer().getId().toString(), cr);
+                    }
+                }
+
+                List<MapRecord<String, Object, Object>> records = redisTemplate.opsForStream()
+                        .reverseRange(temperatureStream, Range.unbounded(), Limit.limit().count(1000));
+
+                if (records != null && !records.isEmpty()) {
+                    Map<String, TemperatureReadingView> latestPerSensor = new HashMap<>();
+                    for (MapRecord<String, Object, Object> record : records) {
+                        Map<Object, Object> value = record.getValue();
+                        if (value == null) continue;
+                        Object sensor = value.get("cod_termometro");
+                        if (sensor != null && termToCr.containsKey(sensor.toString()) && !latestPerSensor.containsKey(sensor.toString())) {
+                            ColdRoom cr = termToCr.get(sensor.toString());
+                            Object tempObj = value.get("temperatura");
+                            Object timeObj = value.get("data_hora");
+                            Object evtObj = value.get("id_evento_redis");
+
+                            BigDecimal temp = null;
+                            if (tempObj != null) {
+                                try {
+                                    temp = new BigDecimal(tempObj.toString().trim());
+                                } catch (Exception ignored) {}
+                            }
+
+                            LocalDateTime measuredAt = null;
+                            if (timeObj != null) {
+                                try {
+                                    String tStr = timeObj.toString().trim();
+                                    if (tStr.length() > 19) tStr = tStr.substring(0, 19);
+                                    measuredAt = LocalDateTime.parse(tStr);
+                                } catch (Exception ignored) {}
+                            }
+
+                            if (temp != null) {
+                                latestPerSensor.put(sensor.toString(), new TemperatureReadingView(
+                                        null,
+                                        cr.getThermometer().getId(),
+                                        cr.getId(),
+                                        null,
+                                        temp,
+                                        measuredAt != null ? measuredAt : LocalDateTime.now(),
+                                        evtObj != null ? evtObj.toString() : record.getId().getValue()
+                                ));
+                            }
+                        }
+                    }
+                    if (!latestPerSensor.isEmpty()) {
+                        return new ArrayList<>(latestPerSensor.values());
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 2. Fallback PostgreSQL
         return repository.findAllWithColdRoomByCd(cdId, allCds).stream()
                 .map(this::toView)
                 .toList();
@@ -101,8 +174,7 @@ public class TemperatureReadingService {
             return findAll(null, NivelAcesso.SUPER_ADMIN);
         }
         return accessService.accessibleDistributionCenterIds(user).stream()
-                .flatMap(cdId -> repository.findAllWithColdRoomByCd(cdId.intValue(), false).stream())
-                .map(this::toView)
+                .flatMap(cdId -> findAll(cdId.intValue(), user.getNivelAcesso()).stream())
                 .distinct()
                 .toList();
     }
@@ -129,9 +201,7 @@ public class TemperatureReadingService {
 
     public Optional<TemperatureReadingView> findCurrentByColdRoom(Long coldRoomId, User user) {
         Integer cdId = coldRoomDistributionCenterId(coldRoomId, user);
-        return repository.findCurrentByColdRoomIdAndCd(coldRoomId, cdId, false).stream()
-                .findFirst()
-                .map(this::toView);
+        return findCurrentByColdRoom(coldRoomId, cdId, user.getNivelAcesso());
     }
 
     public List<TemperatureReadingView> findHistoryByColdRoom(
@@ -141,13 +211,11 @@ public class TemperatureReadingService {
             LocalDateTime to
     ) {
         Integer cdId = coldRoomDistributionCenterId(coldRoomId, user);
-        return repository.findHistoryByColdRoomIdAndCd(coldRoomId, cdId, false, from, to).stream()
-                .map(this::toView)
-                .toList();
+        return findHistoryByColdRoom(coldRoomId, cdId, user.getNivelAcesso(), from, to);
     }
 
     private Integer coldRoomDistributionCenterId(Long coldRoomId, User user) {
-        skadi.api.model.ColdRoom coldRoom = coldRoomRepository.findById(coldRoomId)
+        ColdRoom coldRoom = coldRoomRepository.findById(coldRoomId)
                 .orElseThrow(() -> new ColdRoomNotFoundException(coldRoomId));
         accessService.requireRead(user, coldRoom.getDistributionCenter().getId());
         return Math.toIntExact(coldRoom.getDistributionCenter().getId());
@@ -159,6 +227,51 @@ public class TemperatureReadingService {
             NivelAcesso accessLevel
     ) {
         boolean allCds = validateColdRoomAccess(coldRoomId, cdId, accessLevel);
+        ColdRoom coldRoom = coldRoomRepository.findById(coldRoomId).orElse(null);
+
+        // 1. Tenta buscar no Redis Stream prioritariamente
+        if (redisTemplate != null && coldRoom != null && coldRoom.getThermometer() != null) {
+            String termId = coldRoom.getThermometer().getId().toString();
+            try {
+                List<MapRecord<String, Object, Object>> records = redisTemplate.opsForStream()
+                        .reverseRange(temperatureStream, Range.unbounded(), Limit.limit().count(1000));
+                if (records != null) {
+                    for (MapRecord<String, Object, Object> record : records) {
+                        Map<Object, Object> value = record.getValue();
+                        if (value == null) continue;
+                        Object sensor = value.get("cod_termometro");
+                        if (sensor != null && termId.equals(sensor.toString())) {
+                            Object tempObj = value.get("temperatura");
+                            Object timeObj = value.get("data_hora");
+                            Object evtObj = value.get("id_evento_redis");
+
+                            BigDecimal temp = (tempObj != null) ? new BigDecimal(tempObj.toString().trim()) : null;
+                            LocalDateTime measuredAt = null;
+                            if (timeObj != null) {
+                                String tStr = timeObj.toString().trim();
+                                if (tStr.length() > 19) tStr = tStr.substring(0, 19);
+                                measuredAt = LocalDateTime.parse(tStr);
+                            }
+                            String evtId = evtObj != null ? evtObj.toString() : record.getId().getValue();
+
+                            if (temp != null) {
+                                return Optional.of(new TemperatureReadingView(
+                                        null,
+                                        coldRoom.getThermometer().getId(),
+                                        coldRoomId,
+                                        null,
+                                        temp,
+                                        measuredAt != null ? measuredAt : LocalDateTime.now(),
+                                        evtId
+                                ));
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 2. Fallback PostgreSQL
         return repository.findCurrentByColdRoomIdAndCd(coldRoomId, cdId, allCds).stream()
                 .findFirst()
                 .map(this::toView);
@@ -172,6 +285,59 @@ public class TemperatureReadingService {
             LocalDateTime to
     ) {
         boolean allCds = validateColdRoomAccess(coldRoomId, cdId, accessLevel);
+        ColdRoom coldRoom = coldRoomRepository.findById(coldRoomId).orElse(null);
+
+        // 1. Tenta buscar no Redis Stream prioritariamente
+        if (redisTemplate != null && coldRoom != null && coldRoom.getThermometer() != null) {
+            String termId = coldRoom.getThermometer().getId().toString();
+            try {
+                List<MapRecord<String, Object, Object>> records = redisTemplate.opsForStream()
+                        .reverseRange(temperatureStream, Range.unbounded(), Limit.limit().count(1000));
+                if (records != null && !records.isEmpty()) {
+                    List<TemperatureReadingView> views = new ArrayList<>();
+                    for (MapRecord<String, Object, Object> record : records) {
+                        Map<Object, Object> value = record.getValue();
+                        if (value == null) continue;
+                        Object sensor = value.get("cod_termometro");
+                        if (sensor != null && termId.equals(sensor.toString())) {
+                            Object tempObj = value.get("temperatura");
+                            Object timeObj = value.get("data_hora");
+                            Object evtObj = value.get("id_evento_redis");
+
+                            BigDecimal temp = (tempObj != null) ? new BigDecimal(tempObj.toString().trim()) : null;
+                            LocalDateTime measuredAt = null;
+                            if (timeObj != null) {
+                                String tStr = timeObj.toString().trim();
+                                if (tStr.length() > 19) tStr = tStr.substring(0, 19);
+                                measuredAt = LocalDateTime.parse(tStr);
+                            }
+
+                            if (measuredAt != null) {
+                                if (from != null && measuredAt.isBefore(from)) continue;
+                                if (to != null && measuredAt.isAfter(to)) continue;
+                            }
+
+                            if (temp != null) {
+                                views.add(new TemperatureReadingView(
+                                        null,
+                                        coldRoom.getThermometer().getId(),
+                                        coldRoomId,
+                                        null,
+                                        temp,
+                                        measuredAt != null ? measuredAt : LocalDateTime.now(),
+                                        evtObj != null ? evtObj.toString() : record.getId().getValue()
+                                ));
+                            }
+                        }
+                    }
+                    if (!views.isEmpty()) {
+                        return views;
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        // 2. Fallback PostgreSQL
         return repository.findHistoryByColdRoomIdAndCd(coldRoomId, cdId, allCds, from, to).stream()
                 .map(this::toView)
                 .toList();
@@ -183,7 +349,7 @@ public class TemperatureReadingService {
                 ((Number) row[1]).longValue(),
                 ((Number) row[2]).longValue(),
                 row[3] == null ? null : ((Number) row[3]).longValue(),
-                (java.math.BigDecimal) row[4],
+                (BigDecimal) row[4],
                 toLocalDateTime(row[5]),
                 (String) row[6]
         );
