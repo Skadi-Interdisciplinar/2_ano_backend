@@ -1,5 +1,6 @@
 package skadi.api.dto;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
 
 public record ChangePasswordRequest(
@@ -10,6 +11,7 @@ public record ChangePasswordRequest(
         String novaSenha,
 
         @NotBlank(message = "A confirmação da senha é obrigatória")
+        @JsonAlias({"confirmarNovaSenha", "confirmacaoNovaSenha"})
         String confirmacaoSenha
 ) {
 }

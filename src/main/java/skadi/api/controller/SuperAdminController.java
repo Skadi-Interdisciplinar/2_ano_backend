@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import skadi.api.dto.ChangePasswordRequest;
+import skadi.api.dto.SuperAdminDashboardResponse;
 import skadi.api.dto.SupportRequestResponse;
 import skadi.api.dto.SupportRequestUpdateRequest;
 import skadi.api.dto.SupportStatusUpdateRequest;
@@ -19,8 +21,10 @@ import skadi.api.dto.UserResponse;
 import skadi.api.model.User;
 import skadi.api.service.SuperAdminService;
 import skadi.api.service.SupportRequestService;
+import skadi.api.service.UserService;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("super_admin")
@@ -28,14 +32,38 @@ public class SuperAdminController {
 
     private final SuperAdminService service;
     private final SupportRequestService supportRequestService;
+    private final UserService userService;
 
     public SuperAdminController(SuperAdminService service, SupportRequestService supportRequestService) {
+        this(service, supportRequestService, null);
+    }
+
+    public SuperAdminController(
+            SuperAdminService service,
+            SupportRequestService supportRequestService,
+            UserService userService
+    ) {
         this.service = service;
         this.supportRequestService = supportRequestService;
+        this.userService = userService;
+    }
+
+    @GetMapping("dashboard")
+    public ResponseEntity<SuperAdminDashboardResponse> getDashboard() {
+        return ResponseEntity.ok(service.getDashboardData());
+    }
+
+    @PutMapping("redefinir-senha")
+    public ResponseEntity<Map<String, String>> redefinirSenha(
+            @Valid @RequestBody ChangePasswordRequest request,
+            @AuthenticationPrincipal User user
+    ) {
+        userService.changePassword(user, request.senhaAtual(), request.novaSenha(), request.confirmacaoSenha());
+        return ResponseEntity.ok(Map.of("message", "Senha redefinida com sucesso!"));
     }
 
     @GetMapping("employees_admin")
-    public ResponseEntity<List<UserResponse>> getAllAdmins(){
+    public ResponseEntity<List<UserResponse>> getAllAdmins() {
         return ResponseEntity.ok(service.getAllAdmins());
     }
 

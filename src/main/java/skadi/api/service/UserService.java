@@ -222,7 +222,8 @@ public class UserService {
             return new TokenResponse(
                     token,
                     expirationTime,
-                    Timestamp.from(Instant.now().plusSeconds(expirationTime))
+                    Timestamp.from(Instant.now().plusSeconds(expirationTime)),
+                    UserMapper.toResponse(user)
             );
         } catch (AuthenticationException authenticationException) {
             accessLogService.registerAttempt(

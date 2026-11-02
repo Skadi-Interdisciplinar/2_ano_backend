@@ -2,12 +2,11 @@ package skadi.api.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-
 import org.springframework.web.bind.annotation.*;
 import skadi.api.dto.*;
 import skadi.api.model.User;
@@ -16,6 +15,7 @@ import skadi.api.service.SupportRequestService;
 import skadi.api.service.UserService;
 
 import java.net.URI;
+import java.util.Map;
 
 @RestController
 @Tag(name = "Usuários")
@@ -42,9 +42,7 @@ public class UserController {
     ){
         service.register(dto, authenticatedUser);
         return ResponseEntity.status(HttpStatus.CREATED).build();
-
     }
-
 
     @Operation(summary = "Fazer login", description = "Autentica o usuário e retorna o token JWT.", tags = {"Acesso e autenticação"}, security = {})
     @PostMapping("/auth/login")
@@ -82,8 +80,22 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @PutMapping("/perfil/redefinir-senha")
+    public ResponseEntity<Map<String, String>> redefinirSenhaPerfil(
+            @Valid @RequestBody ChangePasswordRequest request,
+            @AuthenticationPrincipal User user
+    ) {
+        service.changePassword(user, request.senhaAtual(), request.novaSenha(), request.confirmacaoSenha());
+        return ResponseEntity.ok(Map.of("message", "Senha redefinida com sucesso!"));
+    }
+
     @GetMapping("/me")
     public ResponseEntity<UserResponse> me(@AuthenticationPrincipal User user){
+        return ResponseEntity.ok(service.me(user));
+    }
+
+    @GetMapping("/perfil")
+    public ResponseEntity<UserResponse> perfil(@AuthenticationPrincipal User user){
         return ResponseEntity.ok(service.me(user));
     }
 
