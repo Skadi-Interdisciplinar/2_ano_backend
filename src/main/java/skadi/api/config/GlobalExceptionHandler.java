@@ -44,6 +44,7 @@ import skadi.api.exceptions.ThermometerRuleViolationException;
 import skadi.api.exceptions.ColdRoomInvalidTemperatureRangeException;
 import skadi.api.exceptions.ColdRoomRuleViolationException;
 import skadi.api.exceptions.AccessLevelChangeNotAllowedException;
+import skadi.api.exceptions.GestorAssociationRuleException;
 import skadi.api.exceptions.InvalidPasswordRecoveryCodeException;
 import skadi.api.exceptions.PasswordConfirmationMismatchException;
 import skadi.api.exceptions.NotificationNotFoundException;
@@ -110,6 +111,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleAlreadyExists(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ex.getMessage(), Timestamp.from(Instant.now())));
+    }
+
+    @ExceptionHandler(GestorAssociationRuleException.class)
+    public ResponseEntity<ErrorResponse> handleGestorAssociation(GestorAssociationRuleException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), Timestamp.from(Instant.now())));
     }
 
     @ExceptionHandler(AccessLevelChangeNotAllowedException.class)

@@ -13,6 +13,6 @@ public record UserResponse(
         NivelAcesso nivelAcesso,
         DistributionCenterResponse cdGestor,
         List<DistributionCenterResponse> cd,
-        Integer codGestor
+        GestorResponse codGestor
 ) {
 }

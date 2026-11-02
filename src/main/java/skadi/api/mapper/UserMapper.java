@@ -1,6 +1,7 @@
 package skadi.api.mapper;
 
 import skadi.api.dto.DistributionCenterResponse;
+import skadi.api.dto.GestorResponse;
 import skadi.api.dto.RegisterRequest;
 import skadi.api.dto.RegisterResponse;
 import skadi.api.dto.UserRequest;
@@ -22,7 +23,7 @@ public final class UserMapper {
                     dto.senha(),
                     dto.nivelAcesso(),
                     dto.cd(),
-                    dto.codGestor()
+                    toGestor(dto.codGestor())
             );
         }
 
@@ -39,7 +40,7 @@ public final class UserMapper {
                 dto.senha(),
                 dto.nivelAcesso(),
                 uniqueCd,
-                dto.codGestor()
+                toGestor(dto.codGestor())
         );
     }
 
@@ -49,7 +50,7 @@ public final class UserMapper {
         user.setCpf(request.cpf());
         user.setEmail(request.email());
         user.setNivelAcesso(request.nivelAcesso());
-        user.setCodGestor(request.codGestor());
+        user.setGestor(toGestor(request.codGestor()));
         return user;
     }
 
@@ -62,7 +63,7 @@ public final class UserMapper {
                 user.getNivelAcesso(),
                 user.getCdGestor(),
                 user.getCd(),
-                user.getCodGestor()
+                toGestorResponse(user.getGestor())
         );
     }
 
@@ -76,7 +77,7 @@ public final class UserMapper {
                 user.getNivelAcesso(),
                 toDistributionCenterResponse(user.getCdGestor()),
                 toDistributionCenterResponses(user.getCd()),
-                user.getCodGestor()
+                toGestorResponse(user.getGestor())
         );
     }
 
@@ -89,6 +90,32 @@ public final class UserMapper {
             return null;
         }
         return DistributionCenterMapper.toDTO(cd);
+    }
+
+    private static User toGestor(GestorResponse gestor) {
+        if (gestor == null || gestor.id() == null) {
+            return null;
+        }
+        User user = new User();
+        user.setId(gestor.id());
+        user.setNome(gestor.nome());
+        user.setUsername(gestor.username());
+        user.setEmail(gestor.email());
+        user.setNivelAcesso(gestor.nivelAcesso());
+        return user;
+    }
+
+    private static GestorResponse toGestorResponse(User gestor) {
+        if (gestor == null || gestor.getId() == null) {
+            return null;
+        }
+        return new GestorResponse(
+                gestor.getId(),
+                gestor.getNome(),
+                gestor.getUsername(),
+                gestor.getEmail(),
+                gestor.getNivelAcesso()
+        );
     }
 
     private static List<DistributionCenterResponse> toDistributionCenterResponses(List<DistributionCenter> cds) {

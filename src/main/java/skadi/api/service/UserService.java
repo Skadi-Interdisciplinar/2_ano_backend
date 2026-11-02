@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -12,10 +13,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import skadi.api.config.TokenProvider;
+import skadi.api.dto.GestorResponse;
 import skadi.api.dto.LoginRequest;
 import skadi.api.dto.RegisterRequest;
 import skadi.api.dto.RegisterResponse;
 import skadi.api.dto.TokenResponse;
+import skadi.api.dto.UserResponse;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.exceptions.PasswordConfirmationMismatchException;
 import skadi.api.exceptions.UserAlreadyExistsException;
@@ -42,6 +45,7 @@ public class UserService {
     private final DistributionCenterRepository distributionCenterRepository;
     private final DistributionCenterAccessService accessService;
     private final AuditUserContext auditUserContext;
+    private final AccessLogService accessLogService;
 
     @Value("${jwt.expiration}")
     private Long expirationTime;
@@ -63,6 +67,8 @@ public class UserService {
             user.setCdGestor(distributionCenter);
             user.setCd(null);
         }
+        user.setGestor(gestorReference(request.codGestor()));
+        user.validateGestorAssociation();
         user.setSenha(passwordEncoder.encode(request.senha()));
 
         auditUserContext.setCurrentUser(authenticatedUser.getId());
@@ -92,7 +98,7 @@ public class UserService {
                 throw new AccessDeniedException(
                         "SUPER_ADMIN cadastra somente SUPER_ADMIN ou ADMIN.");
             }
-            if (request.cdGestor() != null || request.codGestor() != null) {
+            if (request.cdGestor() != null || gestorId(request.codGestor()) != null) {
                 throw new AccessDeniedException(
                         "ADMIN e SUPER_ADMIN não podem possuir CD único ou gestor.");
             }
@@ -139,18 +145,34 @@ public class UserService {
                 throw new UserAlreadyExistsException(
                         "O centro de distribuição já possui um gestor responsável");
             }
-            if (request.codGestor() != null) {
+            if (gestorId(request.codGestor()) != null) {
                 throw new AccessDeniedException("GESTOR não pode possuir outro gestor responsável.");
             }
         }
 
         if (request.nivelAcesso() == NivelAcesso.OPERADOR) {
-            if (request.codGestor() == null || !repository.existsByIdAndNivelAcessoAndCdGestor_Id(
-                    request.codGestor().longValue(), NivelAcesso.GESTOR, distributionCenter.getId())) {
+            Long gestorId = gestorId(request.codGestor());
+            if (gestorId == null || !repository.existsByIdAndNivelAcessoAndCdGestor_Id(
+                    gestorId, NivelAcesso.GESTOR, distributionCenter.getId())) {
                 throw new AccessDeniedException(
                         "O operador deve possuir um gestor responsável do mesmo CD.");
             }
         }
+    }
+
+    private User gestorReference(GestorResponse gestor) {
+        Long gestorId = gestorId(gestor);
+        if (gestorId == null) {
+            return null;
+        }
+        return repository.getReferenceById(gestorId);
+    }
+
+    private Long gestorId(GestorResponse gestor) {
+        if (gestor == null) {
+            return null;
+        }
+        return gestor.id();
     }
 
 
@@ -171,20 +193,48 @@ public class UserService {
         repository.save(user);
     }
 
-    public TokenResponse login(LoginRequest dto) {
-        try{
+    @Transactional(readOnly = true)
+    public UserResponse me(User authenticatedUser) {
+        if (authenticatedUser == null || authenticatedUser.getId() == null) {
+            throw new AccessDeniedException("Usuário autenticado não identificado.");
+        }
+        User user = repository.findById(authenticatedUser.getId())
+                .orElseThrow(() -> new UserNotFoundException("Usuário não encontrado"));
+        return UserMapper.toResponse(user);
+    }
+
+    public TokenResponse login(LoginRequest dto, String ipAddress, String userAgent) {
+        try {
             Authentication authentication = authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(dto.username(), dto.senha())
+                    new UsernamePasswordAuthenticationToken(dto.username(), dto.password())
             );
 
             String token = tokenProvider.generateToken(authentication);
+            User user = (User) authentication.getPrincipal();
+            accessLogService.registerAttempt(
+                    user.getId(),
+                    true,
+                    ipAddress,
+                    userAgent,
+                    null
+            );
 
-            return new TokenResponse(token, expirationTime, Timestamp.from(Instant.now().plusSeconds(expirationTime)));
-    }catch (BadCredentialsException bad){
+            return new TokenResponse(
+                    token,
+                    expirationTime,
+                    Timestamp.from(Instant.now().plusSeconds(expirationTime))
+            );
+        } catch (AuthenticationException authenticationException) {
+            accessLogService.registerAttempt(
+                    null,
+                    false,
+                    ipAddress,
+                    userAgent,
+                    "CREDENCIAIS_INVALIDAS"
+            );
             throw new BadCredentialsException("Credenciais inválidas");
+        } catch (Exception exception) {
+            throw new RuntimeException("Erro inesperado: " + exception);
         }
-    catch(Exception e){
-            throw new RuntimeException("Erro inesperado: " + e);
-    }
     }
 }

@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import skadi.api.dto.DistributionCenterResponse;
+import skadi.api.dto.GestorResponse;
 import skadi.api.dto.UserRequest;
 import skadi.api.dto.UserResponse;
 import skadi.api.enums.NivelAcesso;
@@ -15,12 +16,14 @@ import skadi.api.model.DistributionCenter;
 import skadi.api.model.User;
 import skadi.api.repository.UserRepository;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -43,7 +46,10 @@ class SuperAdminServiceTest {
     void updateChangesEditableFieldsAndKeepsAccessLevel() {
         DistributionCenter osasco = new DistributionCenter(7L, "CD 7", "12345678901234", null);
         User user = admin(osasco);
+        User gestor = new User();
+        gestor.setId(10L);
         when(repository.findById(3L)).thenReturn(Optional.of(user));
+        when(repository.getReferenceById(10L)).thenReturn(gestor);
         when(repository.save(user)).thenAnswer(invocation -> invocation.getArgument(0));
 
         UserResponse response = service.update(3L, request(NivelAcesso.ADMIN));
@@ -54,7 +60,7 @@ class SuperAdminServiceTest {
         assertEquals("10987654321", response.cpf());
         assertEquals("novo@email.com", response.email());
         assertEquals(NivelAcesso.ADMIN, response.nivelAcesso());
-        assertEquals(10, response.codGestor());
+        assertEquals(10L, response.codGestor().id());
         assertNull(response.cdGestor());
         assertEquals(7L, response.cd().getFirst().id());
         assertEquals("senha-atual", user.getSenha());
@@ -98,22 +104,35 @@ class SuperAdminServiceTest {
 
     @Test
     void deleteRemovesExistingUser() {
-        when(repository.existsById(3L)).thenReturn(true);
+        DistributionCenter cd = new DistributionCenter(1L, "CD Osasco", "12345678901234", null);
+        List<DistributionCenter> centers = new ArrayList<>();
+        centers.add(cd);
+        User admin = new User(3L, "Enzo", "enzo", "12345678901", "enzo@email.com", "senha-atual",
+                NivelAcesso.ADMIN, null, centers, null);
+        User gestor = new User();
+        gestor.setId(3L);
+        User subordinate = new User(8L, "Ana", "ana", "10987654321", "ana@email.com", "senha",
+                NivelAcesso.OPERADOR, cd, null, gestor);
+        when(repository.findById(3L)).thenReturn(Optional.of(admin));
+        when(repository.findAllByGestor_Id(3L)).thenReturn(List.of(subordinate));
 
         service.delete(3L);
 
-        verify(repository).deleteById(3L);
+        assertTrue(admin.getCd().isEmpty());
+        assertNull(subordinate.getGestor());
+        verify(repository).delete(admin);
     }
 
     @Test
     void deleteRejectsUnknownUser() {
-        when(repository.existsById(99L)).thenReturn(false);
+        when(repository.findById(99L)).thenReturn(Optional.empty());
 
         UserNotFoundException exception = assertThrows(UserNotFoundException.class,
                 () -> service.delete(99L));
 
         assertEquals("Usuário não encontrado", exception.getMessage());
-        verify(repository, never()).deleteById(any());
+        verify(repository, never()).findAllByGestor_Id(any());
+        verify(repository, never()).delete(any());
     }
 
     private User admin(DistributionCenter distributionCenter) {
@@ -132,7 +151,7 @@ class SuperAdminServiceTest {
                 nivelAcesso,
                 null,
                 List.of(new DistributionCenterResponse(7L, "CD 7", "12345678901234")),
-                10
+                new GestorResponse(10L, null, null, null, null)
         );
     }
 }

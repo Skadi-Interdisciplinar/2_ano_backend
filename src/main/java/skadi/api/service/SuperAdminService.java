@@ -2,6 +2,7 @@ package skadi.api.service;
 
 
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import skadi.api.dto.UserRequest;
 import skadi.api.dto.UserResponse;
 import skadi.api.enums.NivelAcesso;
@@ -21,10 +22,12 @@ public class SuperAdminService {
         this.repository = repository;
     }
 
+    @Transactional(readOnly = true)
     public List<UserResponse> getAllAdmins(){
         return UserMapper.toResponseList(repository.findAllByNivelAcesso(NivelAcesso.ADMIN));
     }
 
+    @Transactional
     public UserResponse update(Long id, UserRequest request) {
         User user = repository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Usuário não encontrado"));
@@ -34,13 +37,21 @@ public class SuperAdminService {
         }
 
         UserMapper.update(user, request);
+        if (user.getGestor() != null && user.getGestor().getId() != null) {
+            user.setGestor(repository.getReferenceById(user.getGestor().getId()));
+        }
+        user.validateGestorAssociation();
         return UserMapper.toResponse(repository.save(user));
     }
 
+    @Transactional
     public void delete(Long id) {
-        if (!repository.existsById(id)) {
-            throw new UserNotFoundException("Usuário não encontrado");
+        User user = repository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("Usuário não encontrado"));
+        if (user.getCd() != null) {
+            user.getCd().clear();
         }
-        repository.deleteById(id);
+        repository.findAllByGestor_Id(id).forEach(linked -> linked.setGestor(null));
+        repository.delete(user);
     }
 }

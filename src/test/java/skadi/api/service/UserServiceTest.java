@@ -21,6 +21,8 @@ import skadi.api.dto.ErrorResponse;
 import skadi.api.dto.LoginRequest;
 import skadi.api.dto.RegisterRequest;
 import skadi.api.dto.TokenResponse;
+import skadi.api.dto.UserResponse;
+import skadi.api.exceptions.UserNotFoundException;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.exceptions.PasswordConfirmationMismatchException;
 import skadi.api.exceptions.UserAlreadyExistsException;
@@ -62,6 +64,7 @@ class UserServiceTest {
     @Mock private DistributionCenterRepository distributionCenterRepository;
     @Mock private DistributionCenterAccessService accessService;
     @Mock private AuditUserContext auditUserContext;
+    @Mock private AccessLogService accessLogService;
 
     private final GlobalExceptionHandler exceptionHandler = new GlobalExceptionHandler();
 
@@ -70,7 +73,7 @@ class UserServiceTest {
     @BeforeEach
     void setUp() {
         userService = new UserService(repository, authenticationManager, tokenProvider, passwordEncoder,
-                distributionCenterRepository, accessService, auditUserContext);
+                distributionCenterRepository, accessService, auditUserContext, accessLogService);
         ReflectionTestUtils.setField(userService, "expirationTime", 3600L);
     }
 
@@ -131,18 +134,48 @@ class UserServiceTest {
     }
 
     @Test
+    void me_returnsProfileWithoutPassword() {
+        DistributionCenter cd = new DistributionCenter(1L, "CD Osasco", "12345678901234", null);
+        User stored = new User(1000007L, "Enzo", "enzo", "12345678901", "enzo@email.com", "hash",
+                NivelAcesso.ADMIN, null, List.of(cd), null);
+        when(repository.findById(1000007L)).thenReturn(Optional.of(stored));
+
+        UserResponse response = userService.me(new User(1000007L, "Enzo", "enzo", "12345678901",
+                "enzo@email.com", "hash", NivelAcesso.ADMIN, null, null, null));
+
+        assertEquals(1000007L, response.id());
+        assertEquals("enzo", response.username());
+        assertEquals(1, response.cd().size());
+        assertEquals("CD Osasco", response.cd().get(0).name());
+        assertNull(response.codGestor());
+    }
+
+    @Test
+    void me_throwsWhenUserDoesNotExist() {
+        User authenticated = new User(9L, "Enzo", "enzo", null, "enzo@email.com", "hash",
+                NivelAcesso.ADMIN, null, null, null);
+        when(repository.findById(9L)).thenReturn(Optional.empty());
+
+        UserNotFoundException erro = assertThrows(UserNotFoundException.class, () -> userService.me(authenticated));
+
+        assertEquals("Usuário não encontrado", erro.getMessage());
+    }
+
+    @Test
     void login_returnsTokenWhenCredentialsAreValid() {
         LoginRequest request = new LoginRequest("enzo", "senha");
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(authentication);
         when(tokenProvider.generateToken(authentication)).thenReturn("jwt-gerado");
+        when(authentication.getPrincipal()).thenReturn(superAdmin());
 
-        TokenResponse response = userService.login(request);
+        TokenResponse response = userService.login(request, "192.0.2.15", "PostmanRuntime/test");
 
         assertEquals("jwt-gerado", response.token());
         assertEquals(3600L, response.expirationTime());
         assertNotNull(response.validUntil());
         verify(authenticationManager).authenticate(any(UsernamePasswordAuthenticationToken.class));
+        verify(accessLogService).registerAttempt(1L, true, "192.0.2.15", "PostmanRuntime/test", null);
     }
 
     @Test
@@ -153,13 +186,16 @@ class UserServiceTest {
 
         BadCredentialsException erro = assertThrows(
                 BadCredentialsException.class,
-                () -> userService.login(request)
+                () -> userService.login(request, "192.0.2.15", "PostmanRuntime/test")
         );
         ResponseEntity<ErrorResponse> response = exceptionHandler.handleBadCredentials(erro);
 
         assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
         assertEquals(401, response.getBody().statusCode());
         assertEquals("Credenciais inválidas", response.getBody().message());
+        verify(accessLogService).registerAttempt(
+                null, false, "192.0.2.15", "PostmanRuntime/test", "CREDENCIAIS_INVALIDAS"
+        );
     }
 
     @Test
@@ -168,7 +204,8 @@ class UserServiceTest {
         when(authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenThrow(new IllegalStateException("falha"));
 
-        RuntimeException erro = assertThrows(RuntimeException.class, () -> userService.login(request));
+        RuntimeException erro = assertThrows(RuntimeException.class,
+                () -> userService.login(request, "192.0.2.15", "PostmanRuntime/test"));
         ResponseEntity<ErrorResponse> response = exceptionHandler.handleRuntime(erro);
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());

@@ -3,6 +3,7 @@ package skadi.api.controller;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -47,8 +48,13 @@ public class UserController {
 
     @Operation(summary = "Fazer login", description = "Autentica o usuário e retorna o token JWT.", tags = {"Acesso e autenticação"}, security = {})
     @PostMapping("/auth/login")
-    public ResponseEntity<TokenResponse> login (@RequestBody LoginRequest dto){
-        return ResponseEntity.ok(service.login(dto));
+    public ResponseEntity<TokenResponse> login(
+            @RequestBody LoginRequest dto,
+            HttpServletRequest request
+    ) {
+        return ResponseEntity.ok(service.login(
+                dto, request.getRemoteAddr(), request.getHeader("User-Agent")
+        ));
     }
 
     @PostMapping("/auth/recover-password")
@@ -77,8 +83,8 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<User> me(@AuthenticationPrincipal User user){
-        return ResponseEntity.ok(user);
+    public ResponseEntity<UserResponse> me(@AuthenticationPrincipal User user){
+        return ResponseEntity.ok(service.me(user));
     }
 
     @PostMapping("/support")

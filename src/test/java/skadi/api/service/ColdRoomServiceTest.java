@@ -242,7 +242,7 @@ class ColdRoomServiceTest {
 
     private User admin() {
         return new User(50L, "Admin", "admin", "12345678901", "admin@skadi.com",
-                "senha", NivelAcesso.ADMIN, null, List.of(distributionCenter()), 60);
+                "senha", NivelAcesso.ADMIN, null, List.of(distributionCenter()), null);
     }
 
     private User superAdmin() {
