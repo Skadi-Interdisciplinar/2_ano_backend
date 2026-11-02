@@ -19,8 +19,11 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import skadi.api.config.GlobalExceptionHandler;
+import skadi.api.dto.DistributionCenterResponse;
 import skadi.api.dto.SupportRequestResponse;
 import skadi.api.dto.TokenResponse;
+import skadi.api.dto.UserResponse;
+import skadi.api.enums.NivelAcesso;
 import skadi.api.enums.SupportCategory;
 import skadi.api.enums.SupportStatus;
 import skadi.api.exceptions.InvalidPasswordRecoveryCodeException;
@@ -42,6 +45,7 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -96,6 +100,29 @@ class UserControllerTest {
                                 }
                                 """))
                 .andExpect(status().isCreated());
+    }
+
+    @Test
+    void me_returns200WithUserResponse() throws Exception {
+        when(userService.me(any())).thenReturn(new UserResponse(
+                1000007L,
+                "Enzo",
+                "enzo",
+                "12345678901",
+                "enzo@email.com",
+                NivelAcesso.ADMIN,
+                null,
+                java.util.List.of(new DistributionCenterResponse(1L, "CD Osasco", "12345678901234")),
+                null
+        ));
+
+        mockMvc.perform(get("/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1000007))
+                .andExpect(jsonPath("$.username").value("enzo"))
+                .andExpect(jsonPath("$.cd[0].name").value("CD Osasco"))
+                .andExpect(jsonPath("$.senha").doesNotExist())
+                .andExpect(jsonPath("$.password").doesNotExist());
     }
 
     @Test

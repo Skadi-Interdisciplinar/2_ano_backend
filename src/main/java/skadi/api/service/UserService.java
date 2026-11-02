@@ -17,6 +17,7 @@ import skadi.api.dto.LoginRequest;
 import skadi.api.dto.RegisterRequest;
 import skadi.api.dto.RegisterResponse;
 import skadi.api.dto.TokenResponse;
+import skadi.api.dto.UserResponse;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.exceptions.PasswordConfirmationMismatchException;
 import skadi.api.exceptions.UserAlreadyExistsException;
@@ -188,6 +189,16 @@ public class UserService {
         }
         user.setSenha(passwordEncoder.encode(novaSenha));
         repository.save(user);
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse me(User authenticatedUser) {
+        if (authenticatedUser == null || authenticatedUser.getId() == null) {
+            throw new AccessDeniedException("Usuário autenticado não identificado.");
+        }
+        User user = repository.findById(authenticatedUser.getId())
+                .orElseThrow(() -> new UserNotFoundException("Usuário não encontrado"));
+        return UserMapper.toResponse(user);
     }
 
     public TokenResponse login(LoginRequest dto) {

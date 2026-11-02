@@ -21,6 +21,8 @@ import skadi.api.dto.ErrorResponse;
 import skadi.api.dto.LoginRequest;
 import skadi.api.dto.RegisterRequest;
 import skadi.api.dto.TokenResponse;
+import skadi.api.dto.UserResponse;
+import skadi.api.exceptions.UserNotFoundException;
 import skadi.api.enums.NivelAcesso;
 import skadi.api.exceptions.PasswordConfirmationMismatchException;
 import skadi.api.exceptions.UserAlreadyExistsException;
@@ -128,6 +130,34 @@ class UserServiceTest {
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
         assertEquals(409, response.getBody().statusCode());
         assertEquals("Nome de usuário já utilizado", response.getBody().message());
+    }
+
+    @Test
+    void me_returnsProfileWithoutPassword() {
+        DistributionCenter cd = new DistributionCenter(1L, "CD Osasco", "12345678901234", null);
+        User stored = new User(1000007L, "Enzo", "enzo", "12345678901", "enzo@email.com", "hash",
+                NivelAcesso.ADMIN, null, List.of(cd), null);
+        when(repository.findById(1000007L)).thenReturn(Optional.of(stored));
+
+        UserResponse response = userService.me(new User(1000007L, "Enzo", "enzo", "12345678901",
+                "enzo@email.com", "hash", NivelAcesso.ADMIN, null, null, null));
+
+        assertEquals(1000007L, response.id());
+        assertEquals("enzo", response.username());
+        assertEquals(1, response.cd().size());
+        assertEquals("CD Osasco", response.cd().get(0).name());
+        assertNull(response.codGestor());
+    }
+
+    @Test
+    void me_throwsWhenUserDoesNotExist() {
+        User authenticated = new User(9L, "Enzo", "enzo", null, "enzo@email.com", "hash",
+                NivelAcesso.ADMIN, null, null, null);
+        when(repository.findById(9L)).thenReturn(Optional.empty());
+
+        UserNotFoundException erro = assertThrows(UserNotFoundException.class, () -> userService.me(authenticated));
+
+        assertEquals("Usuário não encontrado", erro.getMessage());
     }
 
     @Test
