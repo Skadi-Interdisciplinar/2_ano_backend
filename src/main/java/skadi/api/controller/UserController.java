@@ -77,8 +77,8 @@ public class UserController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<User> me(@AuthenticationPrincipal User user){
-        return ResponseEntity.ok(user);
+    public ResponseEntity<UserResponse> me(@AuthenticationPrincipal User user){
+        return ResponseEntity.ok(service.me(user));
     }
 
     @PostMapping("/support")
