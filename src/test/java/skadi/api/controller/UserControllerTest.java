@@ -128,7 +128,7 @@ class UserControllerTest {
     @Test
     void login_returns200WithToken() throws Exception {
         Timestamp validUntil = Timestamp.from(Instant.parse("2026-01-01T00:00:00Z"));
-        when(userService.login(any())).thenReturn(new TokenResponse("jwt-gerado", 1800L, validUntil));
+        when(userService.login(any(), any(), any())).thenReturn(new TokenResponse("jwt-gerado", 1800L, validUntil));
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -194,7 +194,7 @@ class UserControllerTest {
 
     @Test
     void login_returns401WhenCredentialsAreInvalid() throws Exception {
-        when(userService.login(any())).thenThrow(new BadCredentialsException("Credenciais inválidas"));
+        when(userService.login(any(), any(), any())).thenThrow(new BadCredentialsException("Credenciais inválidas"));
 
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -208,7 +208,7 @@ class UserControllerTest {
 
     @Test
     void login_returns500WhenUnexpectedErrorOccurs() throws Exception {
-        when(userService.login(any())).thenThrow(
+        when(userService.login(any(), any(), any())).thenThrow(
                 new RuntimeException("Erro inesperado: java.lang.IllegalStateException: falha")
         );
 
