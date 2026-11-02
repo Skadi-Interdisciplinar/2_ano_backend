@@ -1,6 +1,12 @@
 package skadi.api.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Range;
+import org.springframework.data.redis.connection.Limit;
+import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import skadi.api.dto.EmployeeDashboardResponse;
@@ -21,6 +27,7 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.*;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DashboardService {
@@ -30,6 +37,12 @@ public class DashboardService {
     private final TemperatureReadingRepository readingRepository;
     private final DistributionCenterRepository cdRepository;
     private final DistributionCenterAccessService accessService;
+    private final StringRedisTemplate redisTemplate;
+
+    @Value("${skadi.redis.temperature-stream:skadi:leituras:temperatura}")
+    private String temperatureStream;
+
+    public record ChamberReading(BigDecimal temperature, LocalDateTime measuredAt) {}
 
     @Transactional(readOnly = true)
     public ManagerDashboardResponse getManagerDashboard(User user) {
@@ -51,32 +64,23 @@ public class DashboardService {
         int offlineCamaras = 0;
         int semDadosCamaras = 0;
 
-        Map<Long, Object[]> latestReadings = new HashMap<>();
+        // Puxa as leituras mais recentes prioritariamente do Redis
+        Map<Long, ChamberReading> latestReadings = getLatestReadings(coldRooms, cdId);
 
         for (ColdRoom cr : coldRooms) {
-            List<Object[]> rows = readingRepository.findCurrentByColdRoomIdAndCd(cr.getId(), Math.toIntExact(cdId), true);
-            if (rows.isEmpty()) {
+            ChamberReading reading = latestReadings.get(cr.getId());
+            if (reading == null || reading.temperature() == null) {
                 semDadosCamaras++;
+            } else if (reading.measuredAt() != null && Math.abs(Duration.between(reading.measuredAt(), now).toMinutes()) > 10) {
+                offlineCamaras++;
             } else {
-                Object[] row = rows.get(0);
-                latestReadings.put(cr.getId(), row);
-
-                BigDecimal temp = row[4] instanceof BigDecimal ? (BigDecimal) row[4] : null;
-                LocalDateTime measuredAt = row[5] instanceof LocalDateTime ? (LocalDateTime) row[5] : null;
-
-                if (temp == null) {
-                    semDadosCamaras++;
-                } else if (measuredAt != null && Math.abs(Duration.between(measuredAt, now).toMinutes()) > 10) {
-                    offlineCamaras++;
+                double t = reading.temperature().doubleValue();
+                double min = cr.getMinimumTemperature() != null ? cr.getMinimumTemperature().doubleValue() : -2.0;
+                double max = cr.getMaximumTemperature() != null ? cr.getMaximumTemperature().doubleValue() : 4.0;
+                if (t >= min && t <= max) {
+                    naFaixaCamaras++;
                 } else {
-                    double t = temp.doubleValue();
-                    double min = cr.getMinimumTemperature() != null ? cr.getMinimumTemperature().doubleValue() : -2.0;
-                    double max = cr.getMaximumTemperature() != null ? cr.getMaximumTemperature().doubleValue() : 4.0;
-                    if (t >= min && t <= max) {
-                        naFaixaCamaras++;
-                    } else {
-                        foraFaixaCamaras++;
-                    }
+                    foraFaixaCamaras++;
                 }
             }
         }
@@ -117,9 +121,8 @@ public class DashboardService {
                     .findFirst()
                     .orElse(null);
 
-            Object[] readingRow = cr != null ? latestReadings.get(cr.getId()) : null;
-            BigDecimal currentTemp = readingRow != null && readingRow[4] instanceof BigDecimal
-                    ? (BigDecimal) readingRow[4] : null;
+            ChamberReading reading = cr != null ? latestReadings.get(cr.getId()) : null;
+            BigDecimal currentTemp = reading != null ? reading.temperature() : null;
 
             priorityDtos.add(new PriorityAlertDto(
                     a.getId(),
@@ -144,15 +147,10 @@ public class DashboardService {
 
         List<PriorityAlertDto> top3 = priorityDtos.stream().limit(3).toList();
 
-        // Leituras de tendência térmica da primeira câmara com prioridade ou #1
-        List<Float> trendReadings = new ArrayList<>();
-        Long targetRoom = !priorityDtos.isEmpty() ? priorityDtos.get(0).coldRoomId() : 1L;
-        List<Object[]> roomReadings = readingRepository.findCurrentByColdRoomIdAndCd(targetRoom, Math.toIntExact(cdId), true);
-        for (Object[] r : roomReadings) {
-            if (r[4] instanceof BigDecimal b) {
-                trendReadings.add(b.floatValue());
-            }
-        }
+        // Leituras de tendência térmica da primeira câmara com prioridade ou #1 (do Redis ou fallback)
+        Long targetRoomId = !priorityDtos.isEmpty() ? priorityDtos.get(0).coldRoomId() : (coldRooms.isEmpty() ? 1L : coldRooms.get(0).getId());
+        ColdRoom targetCr = coldRooms.stream().filter(c -> c.getId().equals(targetRoomId)).findFirst().orElse(null);
+        List<Float> trendReadings = getTrendReadings(targetRoomId, targetCr, cdId);
 
         return new ManagerDashboardResponse(
                 cdId,
@@ -200,6 +198,9 @@ public class DashboardService {
         int slaVencidoCount = 0;
         int proximosVencimentoCount = 0;
 
+        // Puxa leituras atualizadas via Redis
+        Map<Long, ChamberReading> latestReadings = getLatestReadings(coldRooms, cdId);
+
         List<PriorityAlertDto> queue = new ArrayList<>();
 
         for (Alert a : myAlerts) {
@@ -222,9 +223,8 @@ public class DashboardService {
                     .findFirst()
                     .orElse(null);
 
-            List<Object[]> rows = readingRepository.findCurrentByColdRoomIdAndCd(
-                    a.getColdRoomId().longValue(), Math.toIntExact(cdId), true);
-            BigDecimal currentTemp = (!rows.isEmpty() && rows.get(0)[4] instanceof BigDecimal b) ? b : null;
+            ChamberReading reading = cr != null ? latestReadings.get(cr.getId()) : null;
+            BigDecimal currentTemp = reading != null ? reading.temperature() : null;
 
             queue.add(new PriorityAlertDto(
                     a.getId(),
@@ -260,6 +260,136 @@ public class DashboardService {
                 nextAction,
                 queue
         );
+    }
+
+    /**
+     * Consulta as leituras de temperatura mais recentes a partir do Stream do Redis (skadi:leituras:temperatura).
+     * Se o Redis estiver sem dados ou indisponível, executa fallback transparente para o PostgreSQL.
+     */
+    private Map<Long, ChamberReading> getLatestReadings(List<ColdRoom> coldRooms, Long cdId) {
+        Map<Long, ChamberReading> readings = new HashMap<>();
+        Set<String> targetThermometers = new HashSet<>();
+        Map<String, Long> thermometerToChamberId = new HashMap<>();
+
+        for (ColdRoom cr : coldRooms) {
+            if (cr.getThermometer() != null && cr.getThermometer().getId() != null) {
+                String termIdStr = cr.getThermometer().getId().toString();
+                targetThermometers.add(termIdStr);
+                thermometerToChamberId.put(termIdStr, cr.getId());
+            }
+        }
+
+        // 1. Tenta buscar prioritariamente no Redis Stream
+        if (redisTemplate != null && !targetThermometers.isEmpty()) {
+            try {
+                List<MapRecord<String, Object, Object>> records = redisTemplate.opsForStream()
+                        .reverseRange(temperatureStream, Range.unbounded(), Limit.limit().count(1000));
+
+                if (records != null) {
+                    for (MapRecord<String, Object, Object> record : records) {
+                        Map<Object, Object> value = record.getValue();
+                        if (value == null) continue;
+
+                        Object termObj = value.get("cod_termometro");
+                        String termId = termObj != null ? termObj.toString() : null;
+
+                        if (termId != null && targetThermometers.contains(termId)) {
+                            Long chamberId = thermometerToChamberId.get(termId);
+                            if (chamberId != null && !readings.containsKey(chamberId)) {
+                                Object tempObj = value.get("temperatura");
+                                Object timeObj = value.get("data_hora");
+
+                                BigDecimal temp = null;
+                                if (tempObj != null) {
+                                    try {
+                                        temp = new BigDecimal(tempObj.toString().trim());
+                                    } catch (Exception ignored) {}
+                                }
+
+                                LocalDateTime measuredAt = null;
+                                if (timeObj != null) {
+                                    try {
+                                        String timeStr = timeObj.toString().trim();
+                                        if (timeStr.length() > 19) timeStr = timeStr.substring(0, 19);
+                                        measuredAt = LocalDateTime.parse(timeStr);
+                                    } catch (Exception ignored) {}
+                                }
+
+                                if (temp != null) {
+                                    readings.put(chamberId, new ChamberReading(temp, measuredAt));
+                                }
+                            }
+                        }
+                        if (readings.size() == targetThermometers.size()) {
+                            break;
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                log.warn("Leitura no Redis indisponível, utilizando fallback para PostgreSQL: {}", e.getMessage());
+            }
+        }
+
+        // 2. Para as câmaras que não estavam no Redis, complementa com PostgreSQL
+        for (ColdRoom cr : coldRooms) {
+            if (!readings.containsKey(cr.getId())) {
+                List<Object[]> rows = readingRepository.findCurrentByColdRoomIdAndCd(cr.getId(), Math.toIntExact(cdId), true);
+                if (!rows.isEmpty()) {
+                    Object[] row = rows.get(0);
+                    BigDecimal temp = row[4] instanceof BigDecimal ? (BigDecimal) row[4] : null;
+                    LocalDateTime measuredAt = row[5] instanceof LocalDateTime ? (LocalDateTime) row[5] : null;
+                    if (temp != null) {
+                        readings.put(cr.getId(), new ChamberReading(temp, measuredAt));
+                    }
+                }
+            }
+        }
+
+        return readings;
+    }
+
+    /**
+     * Obtém série temporal das últimas leituras térmicas via Redis Stream, com fallback para PostgreSQL.
+     */
+    private List<Float> getTrendReadings(Long targetRoom, ColdRoom targetCr, Long cdId) {
+        List<Float> trend = new ArrayList<>();
+
+        if (redisTemplate != null && targetCr != null && targetCr.getThermometer() != null) {
+            String termId = targetCr.getThermometer().getId().toString();
+            try {
+                List<MapRecord<String, Object, Object>> records = redisTemplate.opsForStream()
+                        .reverseRange(temperatureStream, Range.unbounded(), Limit.limit().count(500));
+                if (records != null) {
+                    for (MapRecord<String, Object, Object> record : records) {
+                        Map<Object, Object> value = record.getValue();
+                        if (value == null) continue;
+                        Object termObj = value.get("cod_termometro");
+                        if (termObj != null && termId.equals(termObj.toString())) {
+                            Object tempObj = value.get("temperatura");
+                            if (tempObj != null) {
+                                try {
+                                    trend.add(Float.parseFloat(tempObj.toString().trim()));
+                                } catch (Exception ignored) {}
+                            }
+                        }
+                        if (trend.size() >= 24) break;
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+
+        if (trend.isEmpty()) {
+            List<Object[]> roomReadings = readingRepository.findCurrentByColdRoomIdAndCd(targetRoom, Math.toIntExact(cdId), true);
+            for (Object[] r : roomReadings) {
+                if (r[4] instanceof BigDecimal b) {
+                    trend.add(b.floatValue());
+                }
+            }
+        } else {
+            Collections.reverse(trend);
+        }
+
+        return trend;
     }
 
     private void sortPriorities(List<PriorityAlertDto> list) {
