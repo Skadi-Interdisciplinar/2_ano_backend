@@ -30,4 +30,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByIdAndNivelAcessoAndCdGestor_Id(Long id, NivelAcesso nivelAcesso, Long distributionCenterId);
 
     List<User> findAllByNivelAcesso(NivelAcesso acesso);
+
+    List<User> findAllByGestor_Id(Long gestorId);
 }

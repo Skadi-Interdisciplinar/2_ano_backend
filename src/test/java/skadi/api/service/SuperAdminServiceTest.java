@@ -14,6 +14,7 @@ import skadi.api.exceptions.AccessLevelChangeNotAllowedException;
 import skadi.api.exceptions.UserNotFoundException;
 import skadi.api.model.DistributionCenter;
 import skadi.api.model.User;
+import skadi.api.repository.AdminDistributionCenterRepository;
 import skadi.api.repository.UserRepository;
 
 import java.util.List;
@@ -33,11 +34,14 @@ class SuperAdminServiceTest {
     @Mock
     private UserRepository repository;
 
+    @Mock
+    private AdminDistributionCenterRepository adminDistributionCenterRepository;
+
     private SuperAdminService service;
 
     @BeforeEach
     void setUp() {
-        service = new SuperAdminService(repository);
+        service = new SuperAdminService(repository, adminDistributionCenterRepository);
     }
 
     @Test
@@ -102,10 +106,17 @@ class SuperAdminServiceTest {
 
     @Test
     void deleteRemovesExistingUser() {
+        User gestor = new User();
+        gestor.setId(3L);
+        User subordinate = new User(8L, "Ana", "ana", "10987654321", "ana@email.com", "senha",
+                NivelAcesso.OPERADOR, new DistributionCenter(1L, "CD Osasco", "12345678901234", null), null, gestor);
         when(repository.existsById(3L)).thenReturn(true);
+        when(repository.findAllByGestor_Id(3L)).thenReturn(List.of(subordinate));
 
         service.delete(3L);
 
+        assertNull(subordinate.getGestor());
+        verify(adminDistributionCenterRepository).deleteByAdmin_Id(3L);
         verify(repository).deleteById(3L);
     }
 
@@ -117,6 +128,8 @@ class SuperAdminServiceTest {
                 () -> service.delete(99L));
 
         assertEquals("Usuário não encontrado", exception.getMessage());
+        verify(adminDistributionCenterRepository, never()).deleteByAdmin_Id(any());
+        verify(repository, never()).findAllByGestor_Id(any());
         verify(repository, never()).deleteById(any());
     }
 

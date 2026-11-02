@@ -32,4 +32,6 @@ public interface AdminDistributionCenterRepository
     List<Long> findDistributionCenterIdsByAdminId(@Param("adminId") Long adminId);
 
     void deleteByDistributionCenter_Id(Long distributionCenterId);
+
+    void deleteByAdmin_Id(Long adminId);
 }
