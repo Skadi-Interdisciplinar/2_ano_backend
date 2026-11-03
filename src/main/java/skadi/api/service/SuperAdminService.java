@@ -10,7 +10,6 @@ import skadi.api.exceptions.AccessLevelChangeNotAllowedException;
 import skadi.api.exceptions.UserNotFoundException;
 import skadi.api.mapper.UserMapper;
 import skadi.api.model.User;
-import skadi.api.repository.AdminDistributionCenterRepository;
 import skadi.api.repository.UserRepository;
 
 import java.util.List;
@@ -18,14 +17,9 @@ import java.util.List;
 @Service
 public class SuperAdminService {
     private final UserRepository repository;
-    private final AdminDistributionCenterRepository adminDistributionCenterRepository;
 
-    public SuperAdminService(
-            UserRepository repository,
-            AdminDistributionCenterRepository adminDistributionCenterRepository
-    ) {
+    public SuperAdminService(UserRepository repository) {
         this.repository = repository;
-        this.adminDistributionCenterRepository = adminDistributionCenterRepository;
     }
 
     @Transactional(readOnly = true)
@@ -52,11 +46,12 @@ public class SuperAdminService {
 
     @Transactional
     public void delete(Long id) {
-        if (!repository.existsById(id)) {
-            throw new UserNotFoundException("Usuário não encontrado");
+        User user = repository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("Usuário não encontrado"));
+        if (user.getCd() != null) {
+            user.getCd().clear();
         }
-        adminDistributionCenterRepository.deleteByAdmin_Id(id);
-        repository.findAllByGestor_Id(id).forEach(user -> user.setGestor(null));
-        repository.deleteById(id);
+        repository.findAllByGestor_Id(id).forEach(linked -> linked.setGestor(null));
+        repository.delete(user);
     }
 }

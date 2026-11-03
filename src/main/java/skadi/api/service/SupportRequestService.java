@@ -52,6 +52,9 @@ public class SupportRequestService {
     public SupportRequestResponse update(Long id, SupportRequestUpdateRequest request, User responsavel) {
         SupportRequest ticket = findTicket(id);
         SupportRequestMapper.update(ticket, request, responsavel);
+        if (ticket.getStatus() == SupportStatus.ATENDIDO) {
+            completeAttendedTicket(ticket, responsavel);
+        }
         return SupportRequestMapper.toResponse(repository.save(ticket));
     }
 
@@ -62,10 +65,9 @@ public class SupportRequestService {
         ticket.setStatus(status);
         if (status == SupportStatus.EM_ATENDIMENTO && currentStatus == SupportStatus.REGISTRADO) {
             ticket.setResponsavel(responsavel);
-        } else if (status == SupportStatus.ATENDIDO && !wasAttended) {
-            ticket.setDataHoraEncerramento(nowUtcMinus3());
-            ticket.setResponsavel(responsavel);
-        } else if (wasAttended && status != SupportStatus.ATENDIDO) {
+        } else if (status == SupportStatus.ATENDIDO) {
+            completeAttendedTicket(ticket, responsavel);
+        } else if (wasAttended) {
             ticket.setDataHoraEncerramento(null);
         }
         return SupportRequestMapper.toResponse(repository.save(ticket));
@@ -74,6 +76,19 @@ public class SupportRequestService {
     public void delete(Long id) {
         findTicket(id);
         repository.deleteById(id);
+    }
+
+    private void completeAttendedTicket(SupportRequest ticket, User responsavel) {
+        if (ticket.getResposta() == null || ticket.getResposta().isBlank()) {
+            throw new SupportRequestRuleViolationException(
+                    "Uma solicitação atendida deve possuir responsável, resposta e data de encerramento.");
+        }
+        if (ticket.getResponsavel() == null) {
+            ticket.setResponsavel(responsavel);
+        }
+        if (ticket.getDataHoraEncerramento() == null) {
+            ticket.setDataHoraEncerramento(nowUtcMinus3());
+        }
     }
 
     private SupportRequest findTicket(Long id) {
