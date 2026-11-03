@@ -39,6 +39,12 @@ public class DistributionCenterAccessService {
         }
     }
 
+    public void requireRead(User user, Long distributionCenterId, RuntimeException notFoundException) {
+        if (!canRead(user, distributionCenterId)) {
+            throw notFoundException;
+        }
+    }
+
     @Transactional(readOnly = true)
     public void requireAdminOwnership(User user, Long distributionCenterId) {
         requireRole(user, NivelAcesso.ADMIN,
@@ -49,6 +55,18 @@ public class DistributionCenterAccessService {
         }
     }
 
+    public void requireAdminOwnership(
+            User user,
+            Long distributionCenterId,
+            RuntimeException notFoundException
+    ) {
+        requireRole(user, NivelAcesso.ADMIN,
+                "Somente o administrador responsável pelo CD pode realizar esta operação.");
+        if (!adminDistributionCenterRepository
+                .existsByAdmin_IdAndDistributionCenter_Id(user.getId(), distributionCenterId)) {
+            throw notFoundException;
+        }
+    }
     public void requireRole(User user, NivelAcesso role, String message) {
         if (user == null || user.getNivelAcesso() != role) {
             throw new AccessDeniedException(message);
@@ -68,6 +86,24 @@ public class DistributionCenterAccessService {
             throw new AccessDeniedException("Perfil sem permissão para esta operação.");
         }
         requireRead(user, distributionCenterId);
+    }
+
+    public void requireOperationalWrite(
+            User user,
+            Long distributionCenterId,
+            RuntimeException notFoundException
+    ) {
+        if (user == null || user.getNivelAcesso() == null
+                || user.getNivelAcesso() == NivelAcesso.SUPER_ADMIN) {
+            throw new AccessDeniedException(
+                    "SUPER_ADMIN possui acesso somente para consulta dos dados operacionais.");
+        }
+        if (user.getNivelAcesso() != NivelAcesso.ADMIN
+                && user.getNivelAcesso() != NivelAcesso.GESTOR
+                && user.getNivelAcesso() != NivelAcesso.OPERADOR) {
+            throw new AccessDeniedException("Perfil sem permissão para esta operação.");
+        }
+        requireRead(user, distributionCenterId, notFoundException);
     }
 
     @Transactional(readOnly = true)

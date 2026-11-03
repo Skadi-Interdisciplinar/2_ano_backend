@@ -66,6 +66,7 @@ public class SecurityConfiguration {
                         .requestMatchers("/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/auth/recover-password", "/auth/verify-recovery-code")
                                 .permitAll()
+                        .requestMatchers(HttpMethod.GET, "/dashboard/manager").hasRole("GESTOR")
                         .requestMatchers(HttpMethod.POST, "/auth/register")
                                 .hasAnyRole("SUPER_ADMIN", "ADMIN")
                         .requestMatchers(HttpMethod.POST, "/cd", "/cold-room", "/thermometer", "/categories")

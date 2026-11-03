@@ -1,5 +1,6 @@
 package skadi.api.service;
 
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import skadi.api.dto.AdminPerCdDto;
@@ -32,9 +33,14 @@ public class SuperAdminService {
     private final UserRepository repository;
     private final DistributionCenterRepository cdRepository;
     private final SupportRequestRepository supportRequestRepository;
+    private final JdbcTemplate jdbcTemplate;
 
     public SuperAdminService(UserRepository repository) {
-        this(repository, null, null);
+        this(repository, null, null, null);
+    }
+
+    public SuperAdminService(UserRepository repository, JdbcTemplate jdbcTemplate) {
+        this(repository, null, null, jdbcTemplate);
     }
 
     public SuperAdminService(
@@ -42,9 +48,19 @@ public class SuperAdminService {
             DistributionCenterRepository cdRepository,
             SupportRequestRepository supportRequestRepository
     ) {
+        this(repository, cdRepository, supportRequestRepository, null);
+    }
+
+    public SuperAdminService(
+            UserRepository repository,
+            DistributionCenterRepository cdRepository,
+            SupportRequestRepository supportRequestRepository,
+            JdbcTemplate jdbcTemplate
+    ) {
         this.repository = repository;
         this.cdRepository = cdRepository;
         this.supportRequestRepository = supportRequestRepository;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Transactional(readOnly = true)
@@ -165,10 +181,27 @@ public class SuperAdminService {
     public void delete(Long id) {
         User user = repository.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("Usuário não encontrado"));
+        releaseHistory(id);
         if (user.getCd() != null) {
             user.getCd().clear();
         }
         repository.findAllByGestor_Id(id).forEach(linked -> linked.setGestor(null));
         repository.delete(user);
+    }
+
+    private void releaseHistory(Long id) {
+        if (jdbcTemplate == null) {
+            return;
+        }
+        jdbcTemplate.update("UPDATE tb_log_acesso SET cod_usuario = NULL WHERE cod_usuario = ?", id);
+        jdbcTemplate.update("UPDATE tb_solicitacao_suporte SET cod_usuario_responsavel = NULL WHERE cod_usuario_responsavel = ?", id);
+        jdbcTemplate.update("DELETE FROM tb_solicitacao_suporte WHERE cod_usuario_solicitante = ?", id);
+        jdbcTemplate.update("UPDATE tb_atendimento SET cod_usuario = NULL WHERE cod_usuario = ?", id);
+        jdbcTemplate.update("DELETE FROM tb_notificacao_alerta WHERE cod_usuario = ?", id);
+        jdbcTemplate.update("""
+                DELETE FROM tb_assinatura
+                WHERE cod_relatorio IN (SELECT id FROM tb_relatorio WHERE cod_usuario_gerador = ?)
+                """, id);
+        jdbcTemplate.update("DELETE FROM tb_relatorio WHERE cod_usuario_gerador = ?", id);
     }
 }

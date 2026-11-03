@@ -50,6 +50,7 @@ import skadi.api.exceptions.PasswordConfirmationMismatchException;
 import skadi.api.exceptions.NotificationNotFoundException;
 import skadi.api.exceptions.SupportRequestNotFoundException;
 import skadi.api.exceptions.SupportRequestRuleViolationException;
+import skadi.api.exceptions.SupportRequestStatusTransitionException;
 import skadi.api.exceptions.ResourceOutsideScopeException;
 import skadi.api.exceptions.UserNotFoundException;
 
@@ -135,6 +136,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handlePasswordConfirmationMismatch(PasswordConfirmationMismatchException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorResponse(HttpStatus.BAD_REQUEST.value(), ex.getMessage(), Timestamp.from(Instant.now())));
+    }
+
+    @ExceptionHandler(SupportRequestStatusTransitionException.class)
+    public ResponseEntity<ErrorResponse> handleSupportRequestStatusTransition(SupportRequestStatusTransitionException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorResponse(HttpStatus.CONFLICT.value(), ex.getMessage(), Timestamp.from(Instant.now())));
     }
 
     @ExceptionHandler(SupportRequestRuleViolationException.class)
