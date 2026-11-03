@@ -1,6 +1,7 @@
 package skadi.api.service;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -35,11 +36,14 @@ class SuperAdminServiceTest {
     @Mock
     private UserRepository repository;
 
+    @Mock
+    private JdbcTemplate jdbcTemplate;
+
     private SuperAdminService service;
 
     @BeforeEach
     void setUp() {
-        service = new SuperAdminService(repository);
+        service = new SuperAdminService(repository, jdbcTemplate);
     }
 
     @Test
