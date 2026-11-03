@@ -8,6 +8,7 @@ import skadi.api.dto.SupportRequestUpdateRequest;
 import skadi.api.enums.SupportStatus;
 import skadi.api.exceptions.SupportRequestNotFoundException;
 import skadi.api.exceptions.SupportRequestRuleViolationException;
+import skadi.api.exceptions.SupportRequestStatusTransitionException;
 import skadi.api.mapper.SupportRequestMapper;
 import skadi.api.model.SupportRequest;
 import skadi.api.model.User;
@@ -61,16 +62,31 @@ public class SupportRequestService {
     public SupportRequestResponse updateStatus(Long id, SupportStatus status, User responsavel) {
         SupportRequest ticket = findTicket(id);
         SupportStatus currentStatus = ticket.getStatus();
-        boolean wasAttended = currentStatus == SupportStatus.ATENDIDO;
+        validateStatusTransition(currentStatus, status);
         ticket.setStatus(status);
         if (status == SupportStatus.EM_ATENDIMENTO && currentStatus == SupportStatus.REGISTRADO) {
             ticket.setResponsavel(responsavel);
         } else if (status == SupportStatus.ATENDIDO) {
             completeAttendedTicket(ticket, responsavel);
-        } else if (wasAttended) {
-            ticket.setDataHoraEncerramento(null);
         }
         return SupportRequestMapper.toResponse(repository.save(ticket));
+    }
+
+    private void validateStatusTransition(SupportStatus currentStatus, SupportStatus requestedStatus) {
+        if (currentStatus == requestedStatus
+                || (currentStatus == SupportStatus.REGISTRADO
+                && requestedStatus == SupportStatus.EM_ATENDIMENTO)
+                || (currentStatus == SupportStatus.EM_ATENDIMENTO
+                && requestedStatus == SupportStatus.ATENDIDO)) {
+            return;
+        }
+
+        String message = switch (currentStatus) {
+            case REGISTRADO -> "A solicitação deve passar de registrado para em_atendimento antes de ser atendida.";
+            case EM_ATENDIMENTO -> "A solicitação em atendimento só pode permanecer nesse status ou ser atendida.";
+            case ATENDIDO -> "Uma solicitação atendida não pode retornar a um status anterior.";
+        };
+        throw new SupportRequestStatusTransitionException(message);
     }
 
     public void delete(Long id) {

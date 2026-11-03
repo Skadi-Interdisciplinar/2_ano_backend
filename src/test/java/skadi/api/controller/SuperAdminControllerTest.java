@@ -20,6 +20,8 @@ import skadi.api.enums.SupportCategory;
 import skadi.api.enums.SupportStatus;
 import skadi.api.exceptions.AccessLevelChangeNotAllowedException;
 import skadi.api.exceptions.SupportRequestNotFoundException;
+import skadi.api.exceptions.SupportRequestRuleViolationException;
+import skadi.api.exceptions.SupportRequestStatusTransitionException;
 import skadi.api.exceptions.UserNotFoundException;
 import skadi.api.service.SuperAdminService;
 import skadi.api.service.SupportRequestService;
@@ -234,6 +236,21 @@ class SuperAdminControllerTest {
                 .andExpect(jsonPath("$.message").value("Chamado não encontrado"));
     }
 
+    @Test
+    void updateSupportRequestStatusReturns409WhenTransitionIsInvalid() throws Exception {
+        String message = "A solicitação deve passar de registrado para em_atendimento antes de ser atendida.";
+        when(supportRequestService.updateStatus(eq(1L), eq(SupportStatus.ATENDIDO), any()))
+                .thenThrow(new SupportRequestStatusTransitionException(message));
+
+        mockMvc.perform(patch("/super_admin/support/1/status")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                { "status": "ATENDIDO" }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.statusCode").value(409))
+                .andExpect(jsonPath("$.message").value(message));
+    }
     @Test
     void deleteSupportRequestReturns204() throws Exception {
         doNothing().when(supportRequestService).delete(1L);
