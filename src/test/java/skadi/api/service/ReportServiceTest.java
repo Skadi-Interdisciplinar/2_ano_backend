@@ -141,16 +141,17 @@ class ReportServiceTest {
     @Test
     void findAll_rejectsUsersWithoutReportAccess() {
         assertThrows(AccessDeniedException.class, () -> service.findAll(user(NivelAcesso.OPERADOR)));
+        assertThrows(AccessDeniedException.class, () -> service.findAll(user(NivelAcesso.SUPER_ADMIN)));
         User noCd = new User(); noCd.setId(9L); noCd.setNivelAcesso(NivelAcesso.GESTOR);
         assertThrows(AccessDeniedException.class, () -> service.findAll(noCd));
         verifyNoInteractions(reportRepository);
     }
 
     @Test
-    void findById_allowsSuperAdminToReadAnyReport() {
-        Report report = report(REPORT_ID, AUTHOR_ID, ReportStatus.GERADO);
-        when(reportRepository.findById(REPORT_ID)).thenReturn(Optional.of(report));
-        assertResponse(service.findById(REPORT_ID, user(NivelAcesso.SUPER_ADMIN)), report);
+    void findById_rejectsSuperAdmin() {
+        assertThrows(AccessDeniedException.class,
+                () -> service.findById(REPORT_ID, user(NivelAcesso.SUPER_ADMIN)));
+        verifyNoInteractions(reportRepository);
     }
 
     @Test

@@ -149,7 +149,10 @@ public class TemperatureReadingService {
     private Integer coldRoomDistributionCenterId(Long coldRoomId, User user) {
         skadi.api.model.ColdRoom coldRoom = coldRoomRepository.findById(coldRoomId)
                 .orElseThrow(() -> new ColdRoomNotFoundException(coldRoomId));
-        accessService.requireRead(user, coldRoom.getDistributionCenter().getId());
+        accessService.requireRead(
+                user,
+                coldRoom.getDistributionCenter().getId(),
+                new ColdRoomNotFoundException(coldRoomId));
         return Math.toIntExact(coldRoom.getDistributionCenter().getId());
     }
 

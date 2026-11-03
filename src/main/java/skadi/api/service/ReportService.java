@@ -42,7 +42,11 @@ public class ReportService {
     public ReportResponse create(ReportRequest request, User user) {
         Integer userId = Math.toIntExact(user.getId());
         auditUserContext.setCurrentUser(user.getId());
-        accessService.requireAdminOwnership(user, request.distributionCenterId().longValue());
+        accessService.requireAdminOwnership(
+                user,
+                request.distributionCenterId().longValue(),
+                new skadi.api.exceptions.CdNotFoundException(
+                        "Centro de distribuição não encontrado: " + request.distributionCenterId()));
         validatePeriod(request.periodStart(), request.periodEnd());
 
         Report report = ReportMapper.fromDTO(request);
@@ -56,14 +60,9 @@ public class ReportService {
 
     public List<ReportResponse> findAll(User user) {
         requireReportReadAccess(user);
-        List<Report> reports;
-        if (user.getNivelAcesso() == NivelAcesso.SUPER_ADMIN) {
-            reports = reportRepository.findAll(Sort.by(Sort.Direction.DESC, "generatedAt"));
-        } else {
-            List<Integer> cdIds = accessibleCdIds(user);
-            reports = cdIds.isEmpty() ? List.of() : reportRepository.findAllByDistributionCenterIdIn(
-                    cdIds, Sort.by(Sort.Direction.DESC, "generatedAt"));
-        }
+        List<Integer> cdIds = accessibleCdIds(user);
+        List<Report> reports = cdIds.isEmpty() ? List.of() : reportRepository.findAllByDistributionCenterIdIn(
+                cdIds, Sort.by(Sort.Direction.DESC, "generatedAt"));
         return reports.stream()
                 .map(ReportMapper::toDTO)
                 .toList();
@@ -75,9 +74,6 @@ public class ReportService {
 
     public Report findReportForUser(Integer id, User user) {
         requireReportReadAccess(user);
-        if (user.getNivelAcesso() == NivelAcesso.SUPER_ADMIN) {
-            return reportRepository.findById(id).orElseThrow(() -> new ReportNotFoundException(id));
-        }
         List<Integer> cdIds = accessibleCdIds(user);
         if (cdIds.isEmpty()) {
             throw new ReportNotFoundException(id);
@@ -88,9 +84,9 @@ public class ReportService {
 
     public void requireReportReadAccess(User user) {
         if (user == null || (user.getNivelAcesso() != NivelAcesso.ADMIN
-                && user.getNivelAcesso() != NivelAcesso.GESTOR
-                && user.getNivelAcesso() != NivelAcesso.SUPER_ADMIN)) {
-            throw new AccessDeniedException("Este perfil não pode consultar relatórios.");
+                && user.getNivelAcesso() != NivelAcesso.GESTOR)) {
+            throw new AccessDeniedException(
+                    "Somente ADMIN e GESTOR vinculados a um CD podem consultar relatórios.");
         }
         if (user.getNivelAcesso() == NivelAcesso.GESTOR && user.getCdId() == null) {
             throw new AccessDeniedException("GESTOR precisa estar vinculado a um CD para consultar relatórios.");

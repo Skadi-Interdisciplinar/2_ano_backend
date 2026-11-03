@@ -57,9 +57,12 @@ public class SupportRequestService {
 
     public SupportRequestResponse updateStatus(Long id, SupportStatus status, User responsavel) {
         SupportRequest ticket = findTicket(id);
-        boolean wasAttended = ticket.getStatus() == SupportStatus.ATENDIDO;
+        SupportStatus currentStatus = ticket.getStatus();
+        boolean wasAttended = currentStatus == SupportStatus.ATENDIDO;
         ticket.setStatus(status);
-        if (status == SupportStatus.ATENDIDO && !wasAttended) {
+        if (status == SupportStatus.EM_ATENDIMENTO && currentStatus == SupportStatus.REGISTRADO) {
+            ticket.setResponsavel(responsavel);
+        } else if (status == SupportStatus.ATENDIDO && !wasAttended) {
             ticket.setDataHoraEncerramento(nowUtcMinus3());
             ticket.setResponsavel(responsavel);
         } else if (wasAttended && status != SupportStatus.ATENDIDO) {

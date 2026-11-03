@@ -35,6 +35,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -202,6 +203,17 @@ class SignatureServiceTest {
     }
 
     @Test
+    void findByReportId_rejectsSuperAdmin() {
+        User superAdmin = superAdmin();
+        doThrow(new AccessDeniedException("Sem permissão"))
+                .when(reportService).findReportForUser(4, superAdmin);
+
+        assertThrows(AccessDeniedException.class,
+                () -> service.findByReportId(4, superAdmin));
+        verifyNoInteractions(repository);
+    }
+
+    @Test
     void findAllByCd_rejectsOperatorOrMissingCd() {
         doThrow(new AccessDeniedException("Sem permissão"))
                 .when(reportService).requireReportReadAccess(any(User.class));
@@ -209,10 +221,15 @@ class SignatureServiceTest {
     }
 
     @Test
-    void findById_allowsSuperAdminToReadAnySignature() {
-        Signature signature = signature(12, 4);
-        when(repository.findById(12)).thenReturn(Optional.of(signature));
-        assertResponse(service.findById(12, superAdmin()), signature);
+    void readEndpoints_rejectSuperAdmin() {
+        User superAdmin = superAdmin();
+        doThrow(new AccessDeniedException("Sem permissão"))
+                .when(reportService).requireReportReadAccess(superAdmin);
+
+        assertThrows(AccessDeniedException.class, () -> service.findAllByCd(superAdmin));
+        assertThrows(AccessDeniedException.class, () -> service.findById(12, superAdmin));
+        verify(repository, never()).findAllByOrderByIdDesc();
+        verify(repository, never()).findById(12);
     }
 
     private Report report(ReportStatus status) {

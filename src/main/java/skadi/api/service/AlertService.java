@@ -39,7 +39,7 @@ public class AlertService {
     public AlertResponse findById(Integer id, User user) {
         Alert alert = repository.findById(id)
                 .orElseThrow(() -> new AlertNotFoundException(id));
-        accessService.requireRead(user, distributionCenterId(id));
+        accessService.requireRead(user, distributionCenterId(id), new AlertNotFoundException(id));
         return toResponse(alert);
     }
 
