@@ -12,6 +12,7 @@ import skadi.api.enums.SupportCategory;
 import skadi.api.enums.SupportStatus;
 import skadi.api.exceptions.SupportRequestNotFoundException;
 import skadi.api.exceptions.SupportRequestRuleViolationException;
+import skadi.api.exceptions.SupportRequestStatusTransitionException;
 import skadi.api.model.SupportRequest;
 import skadi.api.model.User;
 import skadi.api.repository.SupportRequestRepository;
@@ -153,8 +154,46 @@ class SupportRequestServiceTest {
     }
 
     @Test
+    void updateStatusRejectsSkippingInProgressWhenAttending() {
+        SupportRequest ticket = openTicket();
+        ticket.setResposta("Chamado resolvido.");
+        when(repository.findById(1L)).thenReturn(Optional.of(ticket));
+
+        SupportRequestStatusTransitionException exception = assertThrows(
+                SupportRequestStatusTransitionException.class,
+                () -> service.updateStatus(1L, SupportStatus.ATENDIDO, user(9L))
+        );
+
+        assertEquals(
+                "A solicitação deve passar de registrado para em_atendimento antes de ser atendida.",
+                exception.getMessage()
+        );
+        verify(repository, never()).save(any());
+    }
+
+    @Test
+    void updateStatusRejectsMovingInProgressBackToRegistered() {
+        SupportRequest ticket = openTicket();
+        ticket.setStatus(SupportStatus.EM_ATENDIMENTO);
+        ticket.setResponsavel(user(9L));
+        when(repository.findById(1L)).thenReturn(Optional.of(ticket));
+
+        SupportRequestStatusTransitionException exception = assertThrows(
+                SupportRequestStatusTransitionException.class,
+                () -> service.updateStatus(1L, SupportStatus.REGISTRADO, user(9L))
+        );
+
+        assertEquals(
+                "A solicitação em atendimento só pode permanecer nesse status ou ser atendida.",
+                exception.getMessage()
+        );
+        verify(repository, never()).save(any());
+    }
+    @Test
     void updateStatusToAttendedFillsClosingTimeInUtcMinus3() {
         SupportRequest ticket = openTicket();
+        ticket.setStatus(SupportStatus.EM_ATENDIMENTO);
+        ticket.setResponsavel(user(9L));
         ticket.setResposta("Chamado resolvido.");
         when(repository.findById(1L)).thenReturn(Optional.of(ticket));
         when(repository.save(ticket)).thenAnswer(invocation -> invocation.getArgument(0));
@@ -186,20 +225,21 @@ class SupportRequestServiceTest {
     }
 
     @Test
-    void updateStatusLeavingAttendedClearsClosingTime() {
+    void updateStatusRejectsReturningFromAttendedToInProgress() {
         SupportRequest ticket = openTicket();
         ticket.setStatus(SupportStatus.ATENDIDO);
         ticket.setResposta("Chamado resolvido.");
         ticket.setDataHoraEncerramento(LocalDateTime.of(2026, 10, 29, 9, 0));
         ticket.setResponsavel(user(9L));
         when(repository.findById(1L)).thenReturn(Optional.of(ticket));
-        when(repository.save(ticket)).thenAnswer(invocation -> invocation.getArgument(0));
 
-        SupportRequestResponse response = service.updateStatus(1L, SupportStatus.EM_ATENDIMENTO, user(2L));
+        SupportRequestStatusTransitionException exception = assertThrows(
+                SupportRequestStatusTransitionException.class,
+                () -> service.updateStatus(1L, SupportStatus.EM_ATENDIMENTO, user(2L))
+        );
 
-        assertEquals(SupportStatus.EM_ATENDIMENTO, response.status());
-        assertNull(response.dataHoraEncerramento());
-        assertEquals(9L, response.codUsuarioResponsavel());
+        assertEquals("Uma solicitação atendida não pode retornar a um status anterior.", exception.getMessage());
+        verify(repository, never()).save(any());
     }
 
     @Test
@@ -223,6 +263,8 @@ class SupportRequestServiceTest {
     @Test
     void updateStatusToAttendedRejectsTicketWithoutAnswer() {
         SupportRequest ticket = openTicket();
+        ticket.setStatus(SupportStatus.EM_ATENDIMENTO);
+        ticket.setResponsavel(user(9L));
         when(repository.findById(1L)).thenReturn(Optional.of(ticket));
 
         SupportRequestRuleViolationException exception = assertThrows(
