@@ -180,7 +180,7 @@ class SupportRequestServiceTest {
 
         assertEquals(SupportStatus.EM_ATENDIMENTO, response.status());
         assertNull(response.dataHoraEncerramento());
-        assertNull(response.codUsuarioResponsavel());
+        assertEquals(9L, response.codUsuarioResponsavel());
     }
 
     @Test
