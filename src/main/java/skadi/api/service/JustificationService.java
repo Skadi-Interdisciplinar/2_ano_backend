@@ -70,11 +70,17 @@ public class JustificationService {
     }
 
     private void requireReadAccess(Integer alertHandlingId, User user) {
-        accessService.requireRead(user, distributionCenterId(alertHandlingId));
+        accessService.requireRead(
+                user,
+                distributionCenterId(alertHandlingId),
+                AlertHandlingNotFoundException.forHandlingId(alertHandlingId));
     }
 
     private void requireWriteAccess(Integer alertHandlingId, User user) {
-        accessService.requireOperationalWrite(user, distributionCenterId(alertHandlingId));
+        accessService.requireOperationalWrite(
+                user,
+                distributionCenterId(alertHandlingId),
+                AlertHandlingNotFoundException.forHandlingId(alertHandlingId));
     }
 
     private Long distributionCenterId(Integer alertHandlingId) {

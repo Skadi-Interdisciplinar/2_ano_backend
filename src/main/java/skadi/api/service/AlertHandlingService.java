@@ -29,14 +29,18 @@ public class AlertHandlingService {
     public AlertHandlingResponse findByAlertId(Integer alertId, User user) {
         AlertHandling handling = repository.findFirstByAlertIdOrderByIdDesc(alertId)
                 .orElseThrow(() -> AlertHandlingNotFoundException.forAlertId(alertId));
-        accessService.requireRead(user, distributionCenterId(alertId));
+        accessService.requireRead(
+                user, distributionCenterId(alertId), AlertHandlingNotFoundException.forAlertId(alertId));
         return toResponse(handling);
     }
 
     public AlertHandlingResponse findById(Integer id, User user) {
         AlertHandling handling = repository.findById(id)
                 .orElseThrow(() -> AlertHandlingNotFoundException.forHandlingId(id));
-        accessService.requireRead(user, distributionCenterId(handling.getAlertId()));
+        accessService.requireRead(
+                user,
+                distributionCenterId(handling.getAlertId()),
+                AlertHandlingNotFoundException.forHandlingId(id));
         return toResponse(handling);
     }
 

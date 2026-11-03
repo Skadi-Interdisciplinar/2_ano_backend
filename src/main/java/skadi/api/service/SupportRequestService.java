@@ -60,9 +60,12 @@ public class SupportRequestService {
 
     public SupportRequestResponse updateStatus(Long id, SupportStatus status, User responsavel) {
         SupportRequest ticket = findTicket(id);
-        boolean wasAttended = ticket.getStatus() == SupportStatus.ATENDIDO;
+        SupportStatus currentStatus = ticket.getStatus();
+        boolean wasAttended = currentStatus == SupportStatus.ATENDIDO;
         ticket.setStatus(status);
-        if (status == SupportStatus.ATENDIDO) {
+        if (status == SupportStatus.EM_ATENDIMENTO && currentStatus == SupportStatus.REGISTRADO) {
+            ticket.setResponsavel(responsavel);
+        } else if (status == SupportStatus.ATENDIDO) {
             completeAttendedTicket(ticket, responsavel);
         } else if (wasAttended) {
             ticket.setDataHoraEncerramento(null);
