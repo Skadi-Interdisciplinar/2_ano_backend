@@ -113,12 +113,16 @@ public class User implements UserDetails {
     }
 
     public Integer getCdId() {
-        if (cdGestor != null && cdGestor.getId() != null) {
-            return Math.toIntExact(cdGestor.getId());
-        }
-        if (cd != null && !cd.isEmpty() && cd.get(0).getId() != null) {
-            return Math.toIntExact(cd.get(0).getId());
-        }
+        try {
+            if (cdGestor != null && org.hibernate.Hibernate.isInitialized(cdGestor) && cdGestor.getId() != null) {
+                return Math.toIntExact(cdGestor.getId());
+            }
+        } catch (Exception ignored) {}
+        try {
+            if (cd != null && org.hibernate.Hibernate.isInitialized(cd) && !cd.isEmpty() && cd.get(0) != null && cd.get(0).getId() != null) {
+                return Math.toIntExact(cd.get(0).getId());
+            }
+        } catch (Exception ignored) {}
         return null;
     }
 

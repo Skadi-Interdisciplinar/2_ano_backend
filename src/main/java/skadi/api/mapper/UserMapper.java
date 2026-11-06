@@ -68,6 +68,24 @@ public final class UserMapper {
     }
 
     public static UserResponse toResponse(User user) {
+        DistributionCenterResponse cdGestor = null;
+        try {
+            cdGestor = toDistributionCenterResponse(user.getCdGestor());
+        } catch (Exception ignored) {
+        }
+
+        List<DistributionCenterResponse> cds = null;
+        try {
+            cds = toDistributionCenterResponses(user.getCd());
+        } catch (Exception ignored) {
+        }
+
+        GestorResponse gestor = null;
+        try {
+            gestor = toGestorResponse(user.getGestor());
+        } catch (Exception ignored) {
+        }
+
         return new UserResponse(
                 user.getId(),
                 user.getNome(),
@@ -75,9 +93,9 @@ public final class UserMapper {
                 user.getCpf(),
                 user.getEmail(),
                 user.getNivelAcesso(),
-                toDistributionCenterResponse(user.getCdGestor()),
-                toDistributionCenterResponses(user.getCd()),
-                toGestorResponse(user.getGestor())
+                cdGestor,
+                cds,
+                gestor
         );
     }
 
@@ -106,23 +124,34 @@ public final class UserMapper {
     }
 
     private static GestorResponse toGestorResponse(User gestor) {
-        if (gestor == null || gestor.getId() == null) {
+        if (gestor == null) {
             return null;
         }
-        return new GestorResponse(
-                gestor.getId(),
-                gestor.getNome(),
-                gestor.getUsername(),
-                gestor.getEmail(),
-                gestor.getNivelAcesso()
-        );
+        try {
+            if (gestor.getId() == null) {
+                return null;
+            }
+            return new GestorResponse(
+                    gestor.getId(),
+                    gestor.getNome(),
+                    gestor.getUsername(),
+                    gestor.getEmail(),
+                    gestor.getNivelAcesso()
+            );
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private static List<DistributionCenterResponse> toDistributionCenterResponses(List<DistributionCenter> cds) {
         if (cds == null) {
             return null;
         }
-        return DistributionCenterMapper.toDTOList(cds);
+        try {
+            return DistributionCenterMapper.toDTOList(cds);
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
 }

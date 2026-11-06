@@ -50,10 +50,6 @@ public class UserService {
     @Value("${jwt.expiration}")
     private Long expirationTime;
 
-
-
-
-
     @Transactional
     public void register(RegisterRequest request, User authenticatedUser) {
         validateRegistrationPermission(request, authenticatedUser);
@@ -175,7 +171,6 @@ public class UserService {
         return gestor.id();
     }
 
-
     @Transactional
     public void changePassword(User authenticatedUser, String senhaAtual, String novaSenha, String confirmacaoSenha) {
         if (authenticatedUser == null || authenticatedUser.getId() == null) {
@@ -203,6 +198,7 @@ public class UserService {
         return UserMapper.toResponse(user);
     }
 
+    @Transactional(readOnly = true)
     public TokenResponse login(LoginRequest dto, String ipAddress, String userAgent) {
         try {
             Authentication authentication = authenticationManager.authenticate(
@@ -222,7 +218,8 @@ public class UserService {
             return new TokenResponse(
                     token,
                     expirationTime,
-                    Timestamp.from(Instant.now().plusSeconds(expirationTime))
+                    Timestamp.from(Instant.now().plusSeconds(expirationTime)),
+                    UserMapper.toResponse(user)
             );
         } catch (AuthenticationException authenticationException) {
             accessLogService.registerAttempt(
@@ -234,6 +231,7 @@ public class UserService {
             );
             throw new BadCredentialsException("Credenciais inválidas");
         } catch (Exception exception) {
+            exception.printStackTrace();
             throw new RuntimeException("Erro inesperado: " + exception);
         }
     }

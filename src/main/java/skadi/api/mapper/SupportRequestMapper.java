@@ -42,16 +42,20 @@ public final class SupportRequestMapper {
     }
 
     public static SupportRequestResponse toResponse(SupportRequest ticket) {
+        String solicitanteNome = ticket.getSolicitante() != null ? ticket.getSolicitante().getNome() : null;
+        String responsavelNome = ticket.getResponsavel() != null ? ticket.getResponsavel().getNome() : null;
         return new SupportRequestResponse(
                 ticket.getId(),
                 ticket.getSolicitante().getId(),
+                solicitanteNome,
                 ticket.getCategoria(),
                 ticket.getDescricao(),
                 ticket.getStatus(),
                 ticket.getDataHoraAbertura(),
                 ticket.getDataHoraEncerramento(),
                 ticket.getResposta(),
-                ticket.getResponsavel() == null ? null : ticket.getResponsavel().getId()
+                ticket.getResponsavel() == null ? null : ticket.getResponsavel().getId(),
+                responsavelNome
         );
     }
 
